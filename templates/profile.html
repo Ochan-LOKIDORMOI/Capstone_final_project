@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}User Profile{% endblock %}
+{% block content %}
+<h2 class="page-title">👤 Farmer Profile</h2>
+
+<div class="profile-container">
+  <!-- Left: Personal Info -->
+  <div class="profile-left">
+    <div class="profile-card">
+      <div class="profile-avatar">👨🏿‍🌾</div>
+      <h3>{{ name or "LOKIDORMOI" }}</h3>
+      <p><strong>Phone:</strong> {{ phone or "+250791703887" }}</p>
+      <p><strong>Email:</strong> {{ email or "denmarkeddy@gmail.com" }}</p>
+      <p><strong>Farm Location:</strong> {{ location or "Laikipia West" }}</p>
+    </div>
+  </div>
+
+    <div class="update-card">
+      <h4>📝 Edit Profile</h4>
+      <form action="/update-profile" method="POST">
+        <input name="name" placeholder="Update Name" class="form-input" />
+        <input name="phone" placeholder="Update Phone" class="form-input" />
+        <input name="email" placeholder="Update Email" class="form-input" />
+        <input name="location" placeholder="Update Farm Location" class="form-input" />
+        <button class="btn-submit">Save Changes</button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Real-Time Detection{% endblock %}
+{% block content %}
+
+<h2 class="page-title">🔴 Real Time Detection</h2>
+
+<div class="webcam-container">
+  <video id="video" autoplay playsinline></video>
+  <canvas id="canvas" style="display: none"></canvas>
+  <button class="btn-submit" onclick="captureImage()">Detect Animal</button>
+</div>
+
+<div id="result-box" class="alert-box" style="display: none">
+  <h4>🚨 Wildlife Alert</h4>
+  <p id="prediction-result">Detecting...</p>
+</div>
+
+<script>
+  const video = document.getElementById("video");
+
+  // Access the webcam
+  navigator.mediaDevices
+    .getUserMedia({ video: true })
+    .then((stream) => {
+      video.srcObject = stream;
+    })
+    .catch((err) => {
+      console.error("Webcam error:", err);
+    });
+
+  function captureImage() {
+    const canvas = document.getElementById("canvas");
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(video, 0, 0);
+    const dataURL = canvas.toDataURL("image/jpeg");
+
+    fetch("/predict", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ image: dataURL }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        const resultBox = document.getElementById("result-box");
+        resultBox.style.display = "block";
+        document.getElementById("prediction-result").innerText =
+          `${data.label} Detected\nConfidence: ${data.confidence}%`;
+      })
+      .catch((error) => {
+        console.error("Prediction error:", error);
+        alert("Error during prediction. Try again.");
+      });
+  }
+</script>
+
+{% endblock %}

@@ -1,0 +1,79 @@
+{% extends "base.html" %} {% block title %}Detection Log{% endblock %} {% block
+content %}
+<h2 class="page-title">📉 Detection Log</h2>
+
+<!-- Stats Summary -->
+<div class="log-stats">
+  <div class="stat-box">
+    {{ stats.total }}<br /><span>Total Detections</span>
+  </div>
+  <div class="stat-box">{{ stats.total }}<br /><span>Alerts Sent</span></div>
+  <div class="stat-box">
+    {{ stats.unique_animals }}<br /><span>Different Species</span>
+  </div>
+  <div class="stat-box">
+    {{ stats.avg_confidence }}%<br /><span>Avg Confidence</span>
+  </div>
+</div>
+
+<!-- Filter Controls -->
+<div class="log-filter">
+  <button class="filter-btn active" onclick="filterLogs('day')">Day</button>
+  <button class="filter-btn" onclick="filterLogs('week')">Week</button>
+  <button class="filter-btn" onclick="filterLogs('month')">Month</button>
+  <a href="/export-csv?download=true" class="export-btn">⬇ Export CSV</a>
+</div>
+
+<!-- Log Table -->
+<div class="log-table">
+  <table>
+    <thead>
+      <tr>
+        <th>Time</th>
+        <th>Animal</th>
+        <th>Confidence</th>
+        <th>Location</th>
+        <th>Alert Status</th>
+      </tr>
+    </thead>
+    <tbody id="log-table-body">
+      {% for log in logs %}
+      <tr data-view="{{ log.view }}">
+        <td>
+          {{ log.timestamp.split(' ')[1] }}<br />{{ log.timestamp.split(' ')[0]
+          }}
+        </td>
+        <td>
+          {% if log.label == 'Elephant' %} 🐘 {{ log.label }} {% elif log.label
+          == 'Monkey' %} 🐒 {{ log.label }} {% elif log.label == 'Buffalo' %} 🐃
+          {{ log.label }} {% else %} ❓ {{ log.label }} {% endif %}
+        </td>
+        <td><span class="tag">{{ log.confidence }}%</span></td>
+        <td>{{ log.location or 'Unknown' }}</td>
+        <td><span class="badge">Sent</span></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- Filter Script -->
+<script>
+  function filterLogs(view) {
+    document.querySelectorAll(".filter-btn").forEach((btn) => {
+      btn.classList.remove("active");
+    });
+    document
+      .querySelector(`[onclick="filterLogs('${view}')"]`)
+      .classList.add("active");
+
+    document.querySelectorAll("#log-table-body tr").forEach((row) => {
+      row.style.display = row.getAttribute("data-view") === view ? "" : "none";
+    });
+  }
+
+  // Set default view on page load
+  window.onload = () => filterLogs("day");
+</script>
+
+{% endblock %}

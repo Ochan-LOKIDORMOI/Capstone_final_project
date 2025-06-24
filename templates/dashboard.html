@@ -1,0 +1,93 @@
+{% extends "base.html" %} {% block title %}Dashboard{% endblock %} {% block
+content %}
+<h2 class="page-title">Protect Your Farm</h2>
+<p class="subtext">
+  Advanced AI-powered wildlife detection system to safeguard your crops and
+  livestock
+</p>
+
+<div class="stats">
+  <div class="stat-box" id="total-detections">
+    {{ stats.total }}<br /><span>Total Detections</span>
+  </div>
+  <div class="stat-box" id="alerts-sent">
+    {{ stats.alerts }}<br /><span>Alerts Sent</span>
+  </div>
+  <div class="stat-box" id="accuracy">
+    {{ stats.accuracy }}%<br /><span>Accuracy Rate</span>
+  </div>
+</div>
+
+<section class="recent-log">
+  <h3>Recent Detections</h3>
+  <div id="recent-detections">
+    {% for log in logs %}
+    <div class="log-entry">
+      <strong>
+        {% if log.label == 'Elephant' %} 🐘 {% elif log.label == 'Monkey' %} 🐒
+        {% else %} 🐾 {% endif %} {{ log.label }} detected </strong
+      ><br />
+      {{ log.timestamp }} • {{ log.confidence }}% confidence • {{ log.location
+      or 'Unknown' }}
+      <span class="badge">Alert Sent</span>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="recent-log">
+  <h3>💬 Recent Feedback</h3>
+  {% for fb in feedbacks %}
+  <div class="log-entry">
+    “{{ fb.message }}”<br />
+    <span class="badge">– {{ fb.name }}</span>
+    <div class="rating-stars" style="color: gold; font-size: 1em">
+      {% for i in range(fb.rating) %}★{% endfor %}
+    </div>
+  </div>
+  {% else %}
+  <p>No feedback submitted yet.</p>
+  {% endfor %}
+</section>
+
+{% endblock %} {% block scripts %}
+<script>
+  function updateDashboard() {
+    fetch("/latest-detection")
+      .then((res) => res.json())
+      .then((data) => {
+        if (!data.label) return;
+
+        // Update Stats (Total & Accuracy — optional count via backend)
+        const totalElem = document.getElementById("total-detections");
+        const alertsElem = document.getElementById("alerts-sent");
+        const accuracyElem = document.getElementById("accuracy");
+
+        if (totalElem && alertsElem) {
+          totalElem.innerHTML = `${
+            parseInt(totalElem.innerText) + 1
+          }<br><span>Total Detections</span>`;
+          alertsElem.innerHTML = `${
+            parseInt(alertsElem.innerText) + 1
+          }<br><span>Alerts Sent</span>`;
+          accuracyElem.innerHTML = `${data.confidence}%<br><span>Accuracy Rate</span>`;
+        }
+
+        // Prepend Latest Detection
+        const entry = document.createElement("div");
+        entry.classList.add("log-entry");
+        entry.innerHTML = `
+        <strong>${
+          data.label == "Elephant" ? "🐘" : data.label == "Monkey" ? "🐒" : "🐾"
+        } ${data.label} detected</strong><br>
+        ${data.timestamp} • ${data.confidence}% confidence • ${data.location}
+        <span class="badge">Alert Sent</span>
+      `;
+        const container = document.getElementById("recent-detections");
+        container.prepend(entry);
+      });
+  }
+
+  setInterval(updateDashboard, 8000); // Every 8 seconds
+</script>
+{% endblock %}

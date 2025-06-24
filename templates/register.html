@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Farmer Registration{% endblock %}
+{% block content %}
+<h2 class="page-title">🧾 Farmer Registration</h2>
+
+{% if success %}
+<div class="success-message">✅ Farmer Registered Successfully!</div>
+{% elif error %}
+<div class="error-message">❌ {{ error }}</div>
+{% endif %}
+
+<div class="registration-container">
+  <form action="/register-farmer" method="POST" class="registration-form">
+    <h3>Register New Farmer</h3>
+    <p class="form-subtext">
+      Add a new farmer to the Kulinda Shamba protection network
+    </p>
+
+    <input
+      type="text"
+      name="name"
+      class="form-input"
+      placeholder="Farmer Name"
+      required
+    />
+    <input
+      type="tel"
+      name="phone"
+      class="form-input"
+      placeholder="Phone Number (e.g., +250...)"
+      required
+    />
+    <input
+      type="text"
+      name="location"
+      class="form-input"
+      placeholder="Farm Location (e.g., Laikipia West)"
+      required
+    />
+
+    <button type="submit" class="btn-submit">Register Farmer</button>
+  </form>
+
+  <div class="registration-benefits">
+    <h4>What happens after registration?</h4>
+    <ul>
+      <li>✔️ Farmer will receive SMS alerts when wildlife is detected</li>
+      <li>✔️ Access to real-time detection system</li>
+      <li>✔️ Inclusion in the farm protection network</li>
+      <li>✔️ Monthly activity reports</li>
+    </ul>
+  </div>
+</div>
+{% endblock %}

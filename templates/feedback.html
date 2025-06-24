@@ -1,0 +1,73 @@
+{% extends "base.html" %} {% block title %}Feedback & Rating{% endblock %} {%
+block content %}
+<h2 class="page-title">⭐ Share Your Feedback</h2>
+
+<div class="feedback-container">
+  <!-- Feedback Form -->
+  <div class="feedback-form">
+    <h3>We value your thoughts</h3>
+    <p class="form-subtext">
+      Let us know how Kulinda Shamba is helping your farm
+    </p>
+
+    <form action="/feedback" method="POST">
+      <input
+        type="text"
+        name="name"
+        placeholder="Your Name"
+        class="form-input"
+        required
+      />
+      <textarea
+        name="message"
+        placeholder="Your feedback or review..."
+        class="form-input"
+        rows="5"
+        required
+      ></textarea>
+
+      <label>How would you rate us?</label>
+      <div class="star-rating">
+        <input type="radio" name="rating" value="5" id="5-stars" /><label
+          for="5-stars"
+          >★</label
+        >
+        <input type="radio" name="rating" value="4" id="4-stars" /><label
+          for="4-stars"
+          >★</label
+        >
+        <input type="radio" name="rating" value="3" id="3-stars" /><label
+          for="3-stars"
+          >★</label
+        >
+        <input type="radio" name="rating" value="2" id="2-stars" /><label
+          for="2-stars"
+          >★</label
+        >
+        <input type="radio" name="rating" value="1" id="1-star" /><label
+          for="1-star"
+          >★</label
+        >
+      </div>
+
+      <button class="btn-submit">Submit Feedback</button>
+    </form>
+  </div>
+
+  <!-- Testimonials Section -->
+  <div class="feedback-testimonials">
+    <h4>💬 What farmers say:</h4>
+    {% for fb in testimonials %}
+    <div class="testimonial">
+      “{{ fb.message }}”<br />
+      <span class="review-author">– {{ fb.name }}</span>
+      <div class="rating-stars">
+        {% for i in range(fb.rating) %} ★ {% endfor %}
+      </div>
+    </div>
+    {% else %}
+    <p>No feedback submitted yet.</p>
+    {% endfor %}
+  </div>
+  {% endblock %}
+</div>

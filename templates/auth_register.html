@@ -1,0 +1,16 @@
+{% extends "auth_base.html" %}
+{% block title %}Sign Up | Kulinda Shamba{% endblock %}
+{% block content %}
+<div class="auth-bg">
+  <div class="auth-card fade-in">
+    <h2 class="auth-title">Create an Account</h2>
+    <form method="POST" action="/dashboard">
+      <input type="text" name="name" placeholder="Full Name" class="form-input" required>
+      <input type="email" name="email" placeholder="Email Address" class="form-input" required>
+      <input type="password" name="password" placeholder="Password" class="form-input" required>
+      <button type="submit" class="btn-submit">Register</button>
+    </form>
+    <p class="auth-link-text">Already have an account? <a href="/login">Log In</a></p>
+  </div>
+</div>
+{% endblock %}

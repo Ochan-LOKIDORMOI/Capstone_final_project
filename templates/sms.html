@@ -1,0 +1,120 @@
+{% extends "base.html" %} {% block title %}Wildlife Alerts{% endblock %} {%
+block content %}
+<h2 class="page-title">🚨 Wildlife Alert System</h2>
+
+<div class="alert-container">
+  <div class="alert-box">
+    <h3>📢 Latest Detection Alert</h3>
+    <div class="alert-content">
+      <div class="preview-text" id="live-alert">Waiting for detections...</div>
+      <div id="alert-image-preview" class="image-preview">
+        <p>No detection yet</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="deterrent-box">
+    <h4>🦟 Deterrent System</h4>
+    <p>
+      System will auto-activate deterrent in
+      <span id="countdown">5</span> seconds or trigger manually below.
+    </p>
+    <button id="trigger-btn" class="btn-submit">Trigger Deterrent Now</button>
+    <p id="status-text"></p>
+  </div>
+</div>
+
+<script>
+  let lastDetectionId = null;
+  let countdownInterval = null;
+  const triggerBtn = document.getElementById("trigger-btn");
+  const statusText = document.getElementById("status-text");
+
+  // Function to update the alert display
+  function updateAlert(data) {
+    // Only update if this is a new detection
+    if (data._id && data._id !== lastDetectionId) {
+      lastDetectionId = data._id;
+
+      const alertText = document.getElementById("live-alert");
+      const imagePreview = document.getElementById("alert-image-preview");
+
+      alertText.innerHTML = `
+        <strong>🚨 ${data.label} Detected at ${data.location}!</strong><br>
+        Confidence: ${data.confidence}%<br>
+        Time: ${data.timestamp}
+      `;
+
+      if (data.image) {
+        imagePreview.innerHTML = `<img src="${data.image}" alt="Detected ${data.label} at ${data.location}">`;
+      } else {
+        imagePreview.innerHTML = `<p>Image not available</p>`;
+      }
+
+      // Reset and start countdown
+      resetCountdown();
+      startCountdown();
+    }
+  }
+
+  // Reset countdown
+  function resetCountdown() {
+    if (countdownInterval) {
+      clearInterval(countdownInterval);
+      countdownInterval = null;
+    }
+    document.getElementById("countdown").textContent = "5";
+  }
+
+  // Start countdown for auto-trigger
+  function startCountdown() {
+    let seconds = 5;
+    const countdownElement = document.getElementById("countdown");
+
+    countdownInterval = setInterval(() => {
+      seconds--;
+      countdownElement.textContent = seconds;
+
+      if (seconds <= 0) {
+        clearInterval(countdownInterval);
+        activateDeterrent();
+      }
+    }, 1000);
+  }
+
+  // Activate deterrent system
+  function activateDeterrent() {
+    statusText.textContent = `Deterrent activated at ${new Date().toLocaleTimeString()} for ${
+      document.getElementById("live-alert").textContent.split("Detected")[0]
+    }`;
+    // Add actual deterrent activation code here
+    console.log("Deterrent activated!");
+  }
+
+  // Check for new detections
+  async function checkForDetections() {
+    try {
+      const response = await fetch("/latest-detection");
+      const data = await response.json();
+
+      if (data._id) {
+        updateAlert(data);
+      }
+    } catch (error) {
+      console.error("Error checking for detections:", error);
+    }
+  }
+
+  // Manual trigger button
+  triggerBtn.addEventListener("click", () => {
+    resetCountdown();
+    activateDeterrent();
+  });
+
+  // Check for detections every second
+  setInterval(checkForDetections, 1000);
+
+  // Initial check
+  checkForDetections();
+</script>
+{% endblock %}
