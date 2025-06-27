@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify, redirect
+from flask import Flask, render_template, request, jsonify, redirect, session
 import base64
 import re
 import io
@@ -20,9 +20,9 @@ load_dotenv()
 # === Load Model ===
 MODEL_PATH = 'model/model2.h5'
 model = tf.keras.models.load_model(MODEL_PATH)
+app.secret_key = os.getenv("SECRET_KEY")
 
 # === MongoDB Setup ===
-app.secret_key = os.getenv("SECRET_KEY")
 mongo_uri = os.getenv("MONGO_URI")
 client = MongoClient(mongo_uri)
 db = client.kulinda
@@ -63,7 +63,7 @@ def login():
     return render_template('auth_login.html')
 
 
-@app.route('/dashboard')
+@app.route('/dashboard', methods=['GET', 'POST'])
 def dashboard():
     logs = list(detections_col.find().sort("timestamp", -1).limit(5))
     total = detections_col.count_documents({})
@@ -93,24 +93,28 @@ def register_farmer():
         farmer = {
             "name": request.form['name'],
             "phone": request.form['phone'],
+            "email": request.form.get('email', ''),
             "location": request.form['location'],
-            "email": "",
             "photo": None,
             "registered_on": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         }
         result = farmers_col.insert_one(farmer)
-        return redirect(f"/profile/{result.inserted_id}")
+        session['farmer_phone'] = farmer['phone']  # Track with phone number
+        return redirect("/profile")
     return render_template("register.html")
 
 
-@app.route("/profile/<id>")
-def profile(id):
-    farmer = farmers_col.find_one({"_id": ObjectId(id)})
+@app.route("/profile")
+def profile():
+    phone = session.get("farmer_phone")
+    if not phone:
+        return "No farmer in session", 403
+
+    farmer = farmers_col.find_one({"phone": phone})
     if not farmer:
         return "Farmer not found", 404
 
     return render_template("profile.html",
-                           _id=str(farmer["_id"]),
                            name=farmer.get("name", ""),
                            phone=farmer.get("phone", ""),
                            email=farmer.get("email", ""),
@@ -120,17 +124,25 @@ def profile(id):
 
 @app.route('/update-profile', methods=["POST"])
 def update_profile():
-    farmer_id = request.form.get("farmer_id")
-    if not farmer_id:
-        return "Missing ID", 400
-    updates = {k: v for k, v in request.form.items(
-    ) if k in ['name', 'phone', 'email', 'location'] and v}
+    phone = session.get("farmer_phone")
+    if not phone:
+        return "Missing session phone", 403
+
+    updates = {k: v for k, v in request.form.items()
+               if k in ['name', 'email', 'phone', 'location'] and v}
+
     file = request.files.get("avatar")
     if file and file.filename:
         updates["photo"] = "data:image/jpeg;base64," + \
             base64.b64encode(file.read()).decode("utf-8")
-    farmers_col.update_one({"_id": ObjectId(farmer_id)}, {"$set": updates})
-    return redirect(f"/profile/{farmer_id}")
+
+    farmers_col.update_one({"phone": phone}, {"$set": updates})
+
+    # Update session if phone changed
+    if "phone" in updates:
+        session["farmer_phone"] = updates["phone"]
+
+    return redirect("/profile")
 
 
 @app.route('/sms')
@@ -149,23 +161,41 @@ def test_sms():
 
 @app.route('/log')
 def log():
-    logs = list(detections_col.find().sort("timestamp", -1))
     now = datetime.now()
-    formatted = [{
-        "timestamp": d.get("timestamp"),
-        "label": d.get("label", "Unknown"),
-        "confidence": round(float(d.get("confidence", 0)), 2),
-        "location": d.get("location", "Unknown"),
-        "view": 'day' if datetime.strptime(d["timestamp"], '%Y-%m-%d %H:%M:%S').date() == now.date()
-        else 'week' if datetime.strptime(d["timestamp"], '%Y-%m-%d %H:%M:%S') > now - timedelta(days=7)
-        else 'month' if datetime.strptime(d["timestamp"], '%Y-%m-%d %H:%M:%S') > now - timedelta(days=30)
-        else 'older'
-    } for d in logs]
+    logs_cursor = detections_col.find().sort("timestamp", -1).limit(100)
+
+    formatted = []
+    for d in logs_cursor:
+        timestamp_str = d.get("timestamp")
+        try:
+            timestamp = datetime.strptime(timestamp_str, '%Y-%m-%d %H:%M:%S')
+        except Exception:
+            continue  # skip if timestamp is invalid
+
+        view = (
+            'day' if timestamp.date() == now.date()
+            else 'week' if timestamp > now - timedelta(days=7)
+            else 'month' if timestamp > now - timedelta(days=30)
+            else 'older'
+        )
+
+        formatted.append({
+            "timestamp": timestamp_str,
+            "label": d.get("label", "Unknown"),
+            "confidence": round(float(d.get("confidence", 0)), 2),
+            "location": d.get("location", "Unknown"),
+            "view": view
+        })
+
+    total = len(formatted)
+    avg_confidence = round(sum(l["confidence"]
+                           for l in formatted)/total, 2) if total else 0
+    unique_animals = len(set(l["label"] for l in formatted))
 
     return render_template("log.html", logs=formatted, stats={
-        "total": len(formatted),
-        "avg_confidence": round(sum(l["confidence"] for l in formatted)/len(formatted), 2),
-        "unique_animals": len(set(l["label"] for l in formatted))
+        "total": total,
+        "avg_confidence": avg_confidence,
+        "unique_animals": unique_animals
     })
 
 
@@ -249,11 +279,28 @@ def predict():
             "farmer_phone": phone
         }
 
-        detections_col.insert_one(result)
+        # Insert into MongoDB and attach _id
+        insert_result = detections_col.insert_one(result)
+        result["_id"] = str(insert_result.inserted_id)
 
+        # ✅ Send SMS to the farmer if phone is present
         if phone:
-            send_sms_real(
-                phone, f"KULINDA SHAMBA ALERT 🚨\n{label} detected at {location}\nConfidence: {result['confidence']}%")
+            formatted_phone = phone.strip()
+            if formatted_phone.startswith("0"):
+                formatted_phone = "+250" + \
+                    formatted_phone[1:]  # assumes Rwanda
+            elif not formatted_phone.startswith("+"):
+                formatted_phone = "+250" + formatted_phone  # fallback
+
+            try:
+                send_sms_real(
+                    formatted_phone,
+                    f"KULINDA SHAMBA ALERT 🚨\n"
+                    f"{label} detected at {location}\n"
+                    f"Confidence: {result['confidence']}%"
+                )
+            except Exception as sms_err:
+                print("❌ SMS Error:", sms_err)
 
         return jsonify(result)
 
