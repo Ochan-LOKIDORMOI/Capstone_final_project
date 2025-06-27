@@ -115,6 +115,7 @@ def profile():
         return "Farmer not found", 404
 
     return render_template("profile.html",
+                           _id=str(farmer.get("_id")),
                            name=farmer.get("name", ""),
                            phone=farmer.get("phone", ""),
                            email=farmer.get("email", ""),
@@ -128,17 +129,20 @@ def update_profile():
     if not phone:
         return "Missing session phone", 403
 
+    # Safely extract and filter updated values
     updates = {k: v for k, v in request.form.items()
-               if k in ['name', 'email', 'phone', 'location'] and v}
+               if k in ['name', 'email', 'phone', 'location'] and v.strip()}
 
+    # Handle optional profile picture update
     file = request.files.get("avatar")
     if file and file.filename:
         updates["photo"] = "data:image/jpeg;base64," + \
             base64.b64encode(file.read()).decode("utf-8")
 
+    # Perform the update
     farmers_col.update_one({"phone": phone}, {"$set": updates})
 
-    # Update session if phone changed
+    # If phone number changed, update session
     if "phone" in updates:
         session["farmer_phone"] = updates["phone"]
 
