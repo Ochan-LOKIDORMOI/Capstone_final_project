@@ -22,6 +22,7 @@ MODEL_PATH = 'model/model2.h5'
 model = tf.keras.models.load_model(MODEL_PATH)
 
 # === MongoDB Setup ===
+app.secret_key = os.getenv("SECRET_KEY")
 mongo_uri = os.getenv("MONGO_URI")
 client = MongoClient(mongo_uri)
 db = client.kulinda
