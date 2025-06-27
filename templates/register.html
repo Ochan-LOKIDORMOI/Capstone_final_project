@@ -1,6 +1,5 @@
-{% extends "base.html" %}
-{% block title %}Farmer Registration{% endblock %}
-{% block content %}
+{% extends "base.html" %} {% block title %}Farmer Registration{% endblock %} {%
+block content %}
 <h2 class="page-title">🧾 Farmer Registration</h2>
 
 {% if success %}
@@ -23,6 +22,14 @@
       placeholder="Farmer Name"
       required
     />
+    <input
+      type="email"
+      name="email"
+      class="form-input"
+      placeholder="Email Address"
+      required
+    />
+
     <input
       type="tel"
       name="phone"

@@ -1,29 +1,24 @@
-from flask import Flask, render_template, request, jsonify, session, redirect
+from flask import Flask, render_template, request, jsonify, redirect
 import base64
 import re
-import numpy as np
-from PIL import Image
-import io
-import tensorflow as tf
-from pymongo import MongoClient
-from datetime import datetime
-from twilio.rest import Client
-from dotenv import load_dotenv
-import os
-from datetime import datetime, timedelta
-from flask import Response
 import io
 import csv
-from bson import ObjectId  # Added this import
-import base64
+import os
+import numpy as np
+from PIL import Image
+from dotenv import load_dotenv
+from pymongo import MongoClient
+from datetime import datetime, timedelta
+from bson import ObjectId
+from flask import Response
+import tensorflow as tf
+from twilio.rest import Client
 
 app = Flask(__name__)
-
-# === Load .env variables ===
 load_dotenv()
 
 # === Load Model ===
-MODEL_PATH = 'model/kulinda_model.h5'
+MODEL_PATH = 'model/model2.h5'
 model = tf.keras.models.load_model(MODEL_PATH)
 
 # === MongoDB Setup ===
@@ -32,34 +27,24 @@ client = MongoClient(mongo_uri)
 db = client.kulinda
 detections_col = db.detections
 farmers_col = db.farmers
-feedback_col = db.feedback  # Added feedback collection
+feedback_col = db.feedback
 
-# === Preprocessing ===
+# === Preprocess Image ===
 
 
 def preprocess_image(image_bytes):
     image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
     image = image.resize((150, 150))
-    img_array = np.array(image) / 255.0
-    return np.expand_dims(img_array, axis=0)
+    return np.expand_dims(np.array(image) / 255.0, axis=0)
 
-# === SMS Sender ===
+# === SMS ===
 
 
 def send_sms_real(phone, message):
-    account_sid = os.getenv("TWILIO_SID")
-    auth_token = os.getenv("TWILIO_AUTH_TOKEN")
-    twilio_number = os.getenv("TWILIO_PHONE")
+    client = Client(os.getenv("TWILIO_SID"), os.getenv("TWILIO_AUTH_TOKEN"))
+    return client.messages.create(body=message, from_=os.getenv("TWILIO_PHONE"), to=phone).sid
 
-    client = Client(account_sid, auth_token)
-    message = client.messages.create(
-        body=message,
-        from_=twilio_number,
-        to=phone
-    )
-    return message.sid
-
-# === ROUTES ===
+# === Routes ===
 
 
 @app.route('/')
@@ -67,33 +52,27 @@ def welcome():
     return render_template('welcome.html')
 
 
-@app.route('/signup', methods=['GET', 'POST'])
+@app.route('/signup')
 def signup():
     return render_template('auth_register.html')
 
 
-@app.route('/login', methods=['GET', 'POST'])
+@app.route('/login')
 def login():
     return render_template('auth_login.html')
 
 
-@app.route('/dashboard', methods=['GET', 'POST'])
+@app.route('/dashboard')
 def dashboard():
     logs = list(detections_col.find().sort("timestamp", -1).limit(5))
     total = detections_col.count_documents({})
-    alerts_sent = total  # Assuming all detections = alert sent
     confidences = [float(log.get("confidence", 0))
                    for log in logs if "confidence" in log]
     accuracy = round(sum(confidences) / len(confidences),
                      2) if confidences else 0
-
-    # Get the 2 most recent feedbacks
-    feedbacks = list(db.feedback.find().sort("submitted_on", -1).limit(2))
-
+    feedbacks = list(feedback_col.find().sort("submitted_on", -1).limit(2))
     return render_template("dashboard.html", logs=logs, feedbacks=feedbacks, stats={
-        "total": total,
-        "alerts": alerts_sent,
-        "accuracy": accuracy
+        "total": total, "alerts": total, "accuracy": accuracy
     })
 
 
@@ -102,30 +81,55 @@ def detect():
     return render_template('detect.html')
 
 
+@app.route('/upload')
+def upload():
+    return render_template("upload.html")
+
+
 @app.route('/register-farmer', methods=['GET', 'POST'])
 def register_farmer():
     if request.method == 'POST':
-        name = request.form['name']
-        phone = request.form['phone']
-        location = request.form['location']
-
-        existing = db.farmers.find_one({"phone": phone})
-        if existing:
-            return render_template('register.html', error="Farmer with this phone already exists.")
-
         farmer = {
-            "name": name,
-            "phone": phone,
-            "location": location,
-            "email": "",  # Optional, can be added later
+            "name": request.form['name'],
+            "phone": request.form['phone'],
+            "location": request.form['location'],
+            "email": "",
             "photo": None,
             "registered_on": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         }
+        result = farmers_col.insert_one(farmer)
+        return redirect(f"/profile/{result.inserted_id}")
+    return render_template("register.html")
 
-        db.farmers.insert_one(farmer)
-        return render_template('register.html', success=True)
 
-    return render_template('register.html', success=False)
+@app.route("/profile/<id>")
+def profile(id):
+    farmer = farmers_col.find_one({"_id": ObjectId(id)})
+    if not farmer:
+        return "Farmer not found", 404
+
+    return render_template("profile.html",
+                           _id=str(farmer["_id"]),
+                           name=farmer.get("name", ""),
+                           phone=farmer.get("phone", ""),
+                           email=farmer.get("email", ""),
+                           location=farmer.get("location", ""),
+                           photo=farmer.get("photo"))
+
+
+@app.route('/update-profile', methods=["POST"])
+def update_profile():
+    farmer_id = request.form.get("farmer_id")
+    if not farmer_id:
+        return "Missing ID", 400
+    updates = {k: v for k, v in request.form.items(
+    ) if k in ['name', 'phone', 'email', 'location'] and v}
+    file = request.files.get("avatar")
+    if file and file.filename:
+        updates["photo"] = "data:image/jpeg;base64," + \
+            base64.b64encode(file.read()).decode("utf-8")
+    farmers_col.update_one({"_id": ObjectId(farmer_id)}, {"$set": updates})
+    return redirect(f"/profile/{farmer_id}")
 
 
 @app.route('/sms')
@@ -135,10 +139,8 @@ def sms():
 
 @app.route('/test-sms', methods=['POST'])
 def test_sms():
-    phone = request.form.get('phone')
-    message = request.form.get('message')
     try:
-        send_sms_real(phone, message)
+        send_sms_real(request.form['phone'], request.form['message'])
         return render_template('sms.html', success="SMS sent successfully!")
     except Exception as e:
         return render_template('sms.html', error=str(e))
@@ -146,85 +148,49 @@ def test_sms():
 
 @app.route('/log')
 def log():
-    logs_cursor = detections_col.find().sort("timestamp", -1)
-    logs = []
+    logs = list(detections_col.find().sort("timestamp", -1))
     now = datetime.now()
+    formatted = [{
+        "timestamp": d.get("timestamp"),
+        "label": d.get("label", "Unknown"),
+        "confidence": round(float(d.get("confidence", 0)), 2),
+        "location": d.get("location", "Unknown"),
+        "view": 'day' if datetime.strptime(d["timestamp"], '%Y-%m-%d %H:%M:%S').date() == now.date()
+        else 'week' if datetime.strptime(d["timestamp"], '%Y-%m-%d %H:%M:%S') > now - timedelta(days=7)
+        else 'month' if datetime.strptime(d["timestamp"], '%Y-%m-%d %H:%M:%S') > now - timedelta(days=30)
+        else 'older'
+    } for d in logs]
 
-    for d in logs_cursor:
-        # Parse timestamp
-        timestamp_str = d.get("timestamp", "N/A")
-        try:
-            timestamp = datetime.strptime(timestamp_str, '%Y-%m-%d %H:%M:%S')
-        except:
-            continue  # skip invalid timestamp
-
-        # Determine view category
-        view = (
-            'day' if timestamp.date() == now.date()
-            else 'week' if timestamp > now - timedelta(days=7)
-            else 'month' if timestamp > now - timedelta(days=30)
-            else 'older'
-        )
-
-        logs.append({
-            "timestamp": timestamp_str,
-            "label": d.get('label', 'Unknown'),
-            "confidence": round(float(d.get('confidence', 0)), 2),
-            "location": d.get('location', 'Unknown'),
-            "view": view
-        })
-
-    total = len(logs)
-    avg_confidence = round(sum(log['confidence']
-                           for log in logs) / total, 2) if total else 0
-    unique_animals = len(set(log['label'] for log in logs))
-
-    stats = {
-        "total": total,
-        "avg_confidence": avg_confidence,
-        "unique_animals": unique_animals
-    }
-
-    return render_template("log.html", logs=logs, stats=stats)
+    return render_template("log.html", logs=formatted, stats={
+        "total": len(formatted),
+        "avg_confidence": round(sum(l["confidence"] for l in formatted)/len(formatted), 2),
+        "unique_animals": len(set(l["label"] for l in formatted))
+    })
 
 
 @app.route('/export-csv')
 def export_csv():
     logs = list(detections_col.find().sort("timestamp", -1))
-    download = request.args.get("download", "false").lower() == "true"
+    download = request.args.get("download", "false") == "true"
 
     def generate():
         data = io.StringIO()
         writer = csv.writer(data)
-
-        # Write header
         writer.writerow(
-            ["Timestamp", "Animal", "Confidence (%)", "Location", "Alert Status"])
+            ["Timestamp", "Animal", "Confidence", "Location", "Alert"])
         yield data.getvalue()
         data.seek(0)
         data.truncate(0)
-
-        # Write data rows
         for log in logs:
-            timestamp = log.get("timestamp", "N/A")
-            label = log.get("label", "Unknown")
-            confidence = round(float(log.get("confidence", 0)), 2)
-            location = log.get("location", "Unknown")
-            status = "Sent"
-
-            writer.writerow([timestamp, label, confidence, location, status])
+            writer.writerow([log.get("timestamp"), log.get("label", "Unknown"),
+                             round(float(log.get("confidence", 0)), 2),
+                             log.get("location", "Unknown"), "Sent"])
             yield data.getvalue()
             data.seek(0)
             data.truncate(0)
-
-    disposition = (
-        "attachment; filename=detection_log.csv"
-        if download else
-        "inline; filename=detection_log.csv"
-    )
-
-    return Response(generate(), mimetype='text/csv',
-                    headers={"Content-Disposition": disposition})
+    return Response(generate(), mimetype='text/csv', headers={
+        "Content-Disposition": "attachment; filename=detection_log.csv" if download else "inline"
+    })
 
 
 @app.route('/latest-detection')
@@ -233,83 +199,60 @@ def latest_detection():
     if not latest:
         return jsonify({})
     return jsonify({
-        "_id": str(latest.get("_id", "")),  # Added ID field
+        "_id": str(latest["_id"]),
         "label": latest.get("label", "Unknown"),
         "confidence": round(float(latest.get("confidence", 0)), 2),
-        "timestamp": latest.get("timestamp", "N/A"),
+        "timestamp": latest.get("timestamp"),
         "location": latest.get("location", "Unknown"),
         "image": latest.get("image", "")
     })
 
 
-@app.route('/profile')
-def profile():
-    return render_template('profile.html')
-
-@app.route('/feedback', methods=['GET', 'POST'])
+@app.route('/feedback', methods=["GET", "POST"])
 def feedback():
-    if request.method == 'POST':
-        name = request.form['name']
-        message = request.form['message']
-        rating = int(request.form['rating'])
-
-        feedback_doc = {
-            "name": name,
-            "message": message,
-            "rating": rating,
+    if request.method == "POST":
+        feedback_col.insert_one({
+            "name": request.form["name"],
+            "message": request.form["message"],
+            "rating": int(request.form["rating"]),
             "submitted_on": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        }
-        db.feedback.insert_one(feedback_doc)
-
-    # Get all feedback to show on page
-    testimonials = list(db.feedback.find().sort("submitted_on", -1).limit(5))
-    return render_template('feedback.html', testimonials=testimonials)
+        })
+    return render_template("feedback.html", testimonials=list(feedback_col.find().sort("submitted_on", -1).limit(5)))
 
 
-@app.route('/predict', methods=['POST'])
+@app.route('/predict', methods=["POST"])
 def predict():
     try:
         data = request.get_json()
         image_data = data['image']
-        image_bytes = base64.b64decode(
+        img_bytes = base64.b64decode(
             re.sub('^data:image/.+;base64,', '', image_data))
-        image_array = preprocess_image(image_bytes)
+        img_array = preprocess_image(img_bytes)
 
-        predictions = model.predict(image_array)[0]
-        class_names = ['Buffalo', 'Elephant', 'Monkey']
-        predicted_index = int(np.argmax(predictions))
-        confidence = float(predictions[predicted_index]) * 100
+        preds = model.predict(img_array)[0]
+        class_names = ['Elephant', 'Monkey', 'Buffalo']
+        label = class_names[int(np.argmax(preds))]
+        confidence = float(np.max(preds)) * 100
 
-        # Get the most recent farmer's details
         latest_farmer = farmers_col.find_one(sort=[("registered_on", -1)])
+        phone = latest_farmer.get("phone") if latest_farmer else None
         location = latest_farmer.get(
-            'location', 'Unknown') if latest_farmer else 'Unknown'
-        phone = latest_farmer.get('phone') if latest_farmer else None
+            "location") if latest_farmer else "Unknown"
 
         result = {
-            "_id": str(ObjectId()),  # Added unique ID
-            "label": class_names[predicted_index],
+            "label": label,
             "confidence": round(confidence, 2),
             "timestamp": datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-            "location": location,  # Use actual farm location
+            "location": location,
             "image": image_data,
             "farmer_phone": phone
         }
 
         detections_col.insert_one(result)
 
-        # Send SMS only to the detecting farmer
         if phone:
-            try:
-                msg = (
-                    f"KULINDA SHAMBA ALERT 🚨\n"
-                    f"{result['label']} detected at {location}\n"
-                    f"Time: {result['timestamp']}\n"
-                    f"Confidence: {result['confidence']}%"
-                )
-                send_sms_real(phone, msg)
-            except Exception as sms_err:
-                print(f"Failed to send SMS: {sms_err}")
+            send_sms_real(
+                phone, f"KULINDA SHAMBA ALERT 🚨\n{label} detected at {location}\nConfidence: {result['confidence']}%")
 
         return jsonify(result)
 
@@ -317,6 +260,5 @@ def predict():
         return jsonify({"error": str(e)})
 
 
-# === RUN APP ===
 if __name__ == '__main__':
     app.run(debug=True)

@@ -1,13 +1,11 @@
-{% extends "base.html" %}
-{% block title %}Real-Time Detection{% endblock %}
-{% block content %}
+{% extends "base.html" %} {% block title %}Real-Time Detection{% endblock %} {%
+block content %}
 
 <h2 class="page-title">🔴 Real Time Detection</h2>
 
 <div class="webcam-container">
   <video id="video" autoplay playsinline></video>
   <canvas id="canvas" style="display: none"></canvas>
-  <button class="btn-submit" onclick="captureImage()">Detect Animal</button>
 </div>
 
 <div id="result-box" class="alert-box" style="display: none">
@@ -17,6 +15,9 @@
 
 <script>
   const video = document.getElementById("video");
+  const canvas = document.getElementById("canvas");
+  const resultBox = document.getElementById("result-box");
+  const resultText = document.getElementById("prediction-result");
 
   // Access the webcam
   navigator.mediaDevices
@@ -26,10 +27,12 @@
     })
     .catch((err) => {
       console.error("Webcam error:", err);
+      alert("Failed to access webcam.");
     });
 
-  function captureImage() {
-    const canvas = document.getElementById("canvas");
+  function captureAndPredict() {
+    if (!video.videoWidth || !video.videoHeight) return;
+
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
     const ctx = canvas.getContext("2d");
@@ -43,16 +46,25 @@
     })
       .then((res) => res.json())
       .then((data) => {
-        const resultBox = document.getElementById("result-box");
         resultBox.style.display = "block";
-        document.getElementById("prediction-result").innerText =
-          `${data.label} Detected\nConfidence: ${data.confidence}%`;
+
+        if (data.error) {
+          resultText.innerText = "Prediction failed. Try again.";
+          console.error("Prediction error:", data.error);
+        } else {
+          const label = data.label || "Unknown";
+          const confidence = data.confidence ?? "N/A";
+          resultText.innerText = `${label} Detected\nConfidence: ${confidence}%`;
+        }
       })
       .catch((error) => {
-        console.error("Prediction error:", error);
-        alert("Error during prediction. Try again.");
+        console.error("Fetch error:", error);
+        resultText.innerText = "Failed to fetch prediction.";
       });
   }
+
+  // Run detection every 8 seconds
+  setInterval(captureAndPredict, 8000);
 </script>
 
 {% endblock %}

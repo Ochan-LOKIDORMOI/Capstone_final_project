@@ -29,12 +29,15 @@ block content %}
   let countdownInterval = null;
   const triggerBtn = document.getElementById("trigger-btn");
   const statusText = document.getElementById("status-text");
+  const audio = new Audio("/static/sounds/alert.mp3");
+  let soundPlayed = false;
 
   // Function to update the alert display
   function updateAlert(data) {
     // Only update if this is a new detection
     if (data._id && data._id !== lastDetectionId) {
       lastDetectionId = data._id;
+      soundPlayed = false;
 
       const alertText = document.getElementById("live-alert");
       const imagePreview = document.getElementById("alert-image-preview");
@@ -51,7 +54,6 @@ block content %}
         imagePreview.innerHTML = `<p>Image not available</p>`;
       }
 
-      // Reset and start countdown
       resetCountdown();
       startCountdown();
     }
@@ -84,25 +86,22 @@ block content %}
 
   // Activate deterrent system
   function activateDeterrent() {
-    statusText.textContent = `Deterrent activated at ${new Date().toLocaleTimeString()} for ${
-      document.getElementById("live-alert").textContent.split("Detected")[0]
-    }`;
-    // Add actual deterrent activation code here
-    console.log("Deterrent activated!");
-  }
+    const time = new Date().toLocaleTimeString();
+    const label = document
+      .getElementById("live-alert")
+      .textContent.split("Detected")[0];
+    statusText.textContent = `Deterrent activated at ${time} for ${label}`;
 
-  // Check for new detections
-  async function checkForDetections() {
-    try {
-      const response = await fetch("/latest-detection");
-      const data = await response.json();
-
-      if (data._id) {
-        updateAlert(data);
-      }
-    } catch (error) {
-      console.error("Error checking for detections:", error);
+    if (!soundPlayed) {
+      audio.play().catch((e) => {
+        console.warn(
+          "Autoplay blocked: Click anywhere on the page to allow audio."
+        );
+      });
+      soundPlayed = true;
     }
+
+    console.log("Deterrent activated!");
   }
 
   // Manual trigger button
@@ -111,10 +110,22 @@ block content %}
     activateDeterrent();
   });
 
-  // Check for detections every second
-  setInterval(checkForDetections, 1000);
+  // Check for new detections
+  async function checkForDetections() {
+    try {
+      const response = await fetch("/latest-detection");
+      const data = await response.json();
+      if (data._id) {
+        updateAlert(data);
+      }
+    } catch (error) {
+      console.error("Error checking for detections:", error);
+    }
+  }
 
-  // Initial check
+  // Poll every 1 second
+  setInterval(checkForDetections, 1000);
   checkForDetections();
 </script>
+
 {% endblock %}

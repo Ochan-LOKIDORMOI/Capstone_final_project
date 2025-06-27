@@ -1,0 +1,80 @@
+{% extends "base.html" %} {% block title %}Upload & Predict{% endblock %} {%
+block content %}
+<h2 class="page-title">🖼️ Animals Prediction</h2>
+
+<div class="upload-container">
+  <form id="upload-form">
+    <input
+      type="file"
+      id="image-input"
+      accept="image/*"
+      required
+      class="form-input"
+    />
+    <button type="submit" class="btn-submit">Predict</button>
+  </form>
+
+  <div id="preview" style="margin-top: 20px; display: none">
+    <h4>📸 Image Preview</h4>
+    <img
+      id="preview-img"
+      src=""
+      alt="Preview"
+      style="width: 300px; border-radius: 8px"
+    />
+  </div>
+
+  <div
+    id="result-box"
+    class="alert-box"
+    style="margin-top: 20px; display: none"
+  >
+    <h4>🚨 Prediction Result</h4>
+    <p id="prediction-output">Waiting for result...</p>
+  </div>
+</div>
+
+<script>
+  const form = document.getElementById("upload-form");
+  const imageInput = document.getElementById("image-input");
+  const preview = document.getElementById("preview");
+  const previewImg = document.getElementById("preview-img");
+  const resultBox = document.getElementById("result-box");
+  const resultText = document.getElementById("prediction-output");
+
+  form.addEventListener("submit", function (e) {
+    e.preventDefault();
+    const file = imageInput.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onloadend = function () {
+      const base64Image = reader.result;
+
+      // Show preview
+      preview.style.display = "block";
+      previewImg.src = base64Image;
+
+      fetch("/predict", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ image: base64Image }),
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          resultBox.style.display = "block";
+          if (data.error) {
+            resultText.innerText = "❌ Error: " + data.error;
+          } else {
+            resultText.innerText = `${data.label} detected\nConfidence: ${data.confidence}%`;
+          }
+        })
+        .catch((err) => {
+          console.error(err);
+          resultText.innerText = "⚠️ Prediction failed. Try again.";
+        });
+    };
+    reader.readAsDataURL(file);
+  });
+</script>
+{% endblock %}

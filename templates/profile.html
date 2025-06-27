@@ -1,27 +1,59 @@
-{% extends "base.html" %}
-{% block title %}User Profile{% endblock %}
-{% block content %}
+{% extends "base.html" %} {% block title %}User Profile{% endblock %} {% block
+content %}
 <h2 class="page-title">👤 Farmer Profile</h2>
 
 <div class="profile-container">
   <!-- Left: Personal Info -->
   <div class="profile-left">
     <div class="profile-card">
+      {% if photo %}
+      <img
+        src="{{ photo }}"
+        alt="Profile Photo"
+        class="profile-avatar"
+        style="
+          width: 120px;
+          height: 120px;
+          border-radius: 50%;
+          object-fit: cover;
+        "
+      />
+      {% else %}
       <div class="profile-avatar">👨🏿‍🌾</div>
-      <h3>{{ name or "LOKIDORMOI" }}</h3>
-      <p><strong>Phone:</strong> {{ phone or "+250791703887" }}</p>
-      <p><strong>Email:</strong> {{ email or "denmarkeddy@gmail.com" }}</p>
-      <p><strong>Farm Location:</strong> {{ location or "Laikipia West" }}</p>
+      {% endif %}
+      <h3>{{ name or "Unknown" }}</h3>
+      <p><strong>Phone:</strong> {{ phone or "N/A" }}</p>
+      <p><strong>Email:</strong> {{ email or "N/A" }}</p>
+      <p><strong>Farm Location:</strong> {{ location or "N/A" }}</p>
     </div>
   </div>
 
+  <!-- Right: Update Profile Form -->
+  <div class="profile-right">
     <div class="update-card">
       <h4>📝 Edit Profile</h4>
-      <form action="/update-profile" method="POST">
-        <input name="name" placeholder="Update Name" class="form-input" />
-        <input name="phone" placeholder="Update Phone" class="form-input" />
-        <input name="email" placeholder="Update Email" class="form-input" />
-        <input name="location" placeholder="Update Farm Location" class="form-input" />
+      <form
+        action="/update-profile"
+        method="POST"
+        enctype="multipart/form-data"
+      >
+        <input type="hidden" name="farmer_id" value="{{ _id }}" />
+
+        <label>Name</label>
+        <input name="name" class="form-input" value="{{ name }}" />
+
+        <label>Email</label>
+        <input name="email" class="form-input" value="{{ email }}" />
+
+        <label>Phone</label>
+        <input name="phone" class="form-input" value="{{ phone }}" />
+
+        <label>Location</label>
+        <input name="location" class="form-input" value="{{ location }}" />
+
+        <label>Update Profile Picture</label>
+        <input type="file" name="avatar" accept="image/*" class="form-input" />
+
         <button class="btn-submit">Save Changes</button>
       </form>
     </div>
