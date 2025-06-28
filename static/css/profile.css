@@ -1,0 +1,88 @@
+/* Container holding profile info and update form */
+.profile-container {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 40px;
+  margin: 40px auto;
+  max-width: 1000px;
+}
+
+/* Left section: profile display */
+.profile-left {
+  flex: 1;
+  min-width: 280px;
+}
+
+.profile-card {
+  background: #ffffff;
+  padding: 30px;
+  border-radius: 12px;
+  text-align: center;
+  color: #113d2e;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.profile-avatar {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  object-fit: cover;
+  margin-bottom: 15px;
+  border: 3px solid #1da447;
+}
+
+/* Right section: profile update form */
+.profile-right {
+  flex: 1;
+  min-width: 280px;
+}
+
+.update-card {
+  background: #ffffff;
+  padding: 30px;
+  border-radius: 12px;
+  color: #113d2e;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.update-card h4 {
+  margin-bottom: 15px;
+  font-size: 20px;
+}
+
+.update-card label {
+  display: block;
+  margin-top: 15px;
+  margin-bottom: 6px;
+  font-weight: bold;
+  font-size: 14px;
+}
+
+.update-card .form-input {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  font-size: 15px;
+  background-color: #f9f9f9;
+  color: #113d2e;
+}
+
+.update-card .btn-submit {
+  margin-top: 20px;
+  width: 100%;
+  background-color: #1da447;
+  color: white;
+  font-weight: bold;
+  padding: 12px;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.update-card .btn-submit:hover {
+  background-color: #17893b;
+}

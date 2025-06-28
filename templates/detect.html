@@ -1,6 +1,10 @@
 {% extends "base.html" %} {% block title %}Real-Time Detection{% endblock %} {%
 block content %}
 
+{% block styles %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/detect.css') }}">
+{% endblock %}
+
 <h2 class="page-title">🔴 Real Time Detection</h2>
 
 <div class="webcam-container">

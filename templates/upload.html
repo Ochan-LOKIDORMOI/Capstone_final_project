@@ -1,5 +1,11 @@
 {% extends "base.html" %} {% block title %}Upload & Predict{% endblock %} {%
-block content %}
+block content %} {% block styles %}
+<link
+  rel="stylesheet"
+  href="{{ url_for('static', filename='css/predict.css') }}"
+/>
+{% endblock %}
+
 <h2 class="page-title">🖼️ Animals Prediction</h2>
 
 <div class="upload-container">

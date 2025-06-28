@@ -1,19 +1,17 @@
 {% extends "base.html" %} {% block title %}User Profile{% endblock %} {% block
-content %}
+content %} {% block styles %}
+<link
+  rel="stylesheet"
+  href="{{ url_for('static', filename='css/profile.css') }}"
+/>
+{% endblock %}
 
-<div class="profile-container vertical-center">
-  <div
-    class="profile-card"
-    style="
-      background-color: #ffffff15;
-      padding: 25px;
-      border-radius: 10px;
-      width: 360px;
-      text-align: center;
-    "
-  >
-    <!-- Profile Image Upload -->
-    <label for="avatar-input" style="cursor: pointer">
+<h2 class="page-title">👤 Farmer Profile</h2>
+
+<div class="profile-container">
+  <!-- Left: Personal Info -->
+  <div class="profile-left">
+    <div class="profile-card">
       {% if photo %}
       <img
         src="{{ photo }}"
@@ -27,93 +25,44 @@ content %}
         "
       />
       {% else %}
-      <div class="profile-avatar" style="font-size: 100px">👨🏿‍🌾</div>
+      <div class="profile-avatar">👨🏿‍🌾</div>
       {% endif %}
-      <p style="font-size: 13px; color: #ccc">Click image to update</p>
-    </label>
+      <h3>{{ name or "Unknown" }}</h3>
+      <p><strong>Phone:</strong> {{ phone or "N/A" }}</p>
+      <p><strong>Email:</strong> {{ email or "N/A" }}</p>
+      <p><strong>Farm Location:</strong> {{ location or "N/A" }}</p>
+    </div>
+  </div>
 
-    <!-- Hidden file input -->
-    <form
-      action="/update-profile"
-      method="POST"
-      enctype="multipart/form-data"
-      style="margin-top: 10px"
-    >
-      <input
-        type="file"
-        name="avatar"
-        id="avatar-input"
-        accept="image/*"
-        style="display: none"
-      />
+  <!-- Right: Update Profile Form -->
+  <div class="profile-right">
+    <div class="update-card">
+      <h4>📝 Edit Profile</h4>
+      <form
+        action="/update-profile"
+        method="POST"
+        enctype="multipart/form-data"
+      >
+        <input type="hidden" name="farmer_id" value="{{ _id }}" />
 
-      <!-- Editable Fields -->
-      <input
-        name="name"
-        class="form-input"
-        value="{{ name }}"
-        placeholder="Name"
-        required
-      />
-      <input
-        name="email"
-        class="form-input"
-        value="{{ email }}"
-        placeholder="Email"
-        required
-      />
-      <input
-        name="phone"
-        class="form-input"
-        value="{{ phone }}"
-        placeholder="Phone"
-        required
-      />
-      <input
-        name="location"
-        class="form-input"
-        value="{{ location }}"
-        placeholder="Farm Location"
-        required
-      />
+        <label>Name</label>
+        <input name="name" class="form-input" value="{{ name }}" />
 
-      <button class="btn-submit" style="margin-top: 10px">
-        💾 Save Changes
-      </button>
-    </form>
+        <label>Email</label>
+        <input name="email" class="form-input" value="{{ email }}" />
+
+        <label>Phone</label>
+        <input name="phone" class="form-input" value="{{ phone }}" />
+
+        <label>Location</label>
+        <input name="location" class="form-input" value="{{ location }}" />
+
+        <label>Update Profile Picture</label>
+        <input type="file" name="avatar" accept="image/*" class="form-input" />
+
+        <button class="btn-submit">Save Changes</button>
+      </form>
+    </div>
   </div>
 </div>
-
-<style>
-  .profile-container {
-    display: flex;
-    justify-content: center;
-    padding: 30px 0;
-  }
-
-  .form-input {
-    width: 100%;
-    padding: 10px;
-    margin: 8px 0;
-    border-radius: 6px;
-    border: 1px solid #ccc;
-    background-color: #fff;
-    color: #000;
-  }
-
-  .btn-submit {
-    background-color: #28a745;
-    color: white;
-    padding: 12px;
-    border: none;
-    width: 100%;
-    font-weight: bold;
-    border-radius: 6px;
-    cursor: pointer;
-  }
-
-  .btn-submit:hover {
-    background-color: #218838;
-  }
-</style>
 {% endblock %}

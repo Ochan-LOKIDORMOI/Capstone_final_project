@@ -1,0 +1,73 @@
+/* Predict Page Styles */
+
+.page-title {
+  text-align: center;
+  color: #f8c240;
+  margin-top: 20px;
+  font-size: 2em;
+}
+
+.upload-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  margin-top: 40px;
+  padding: 30px;
+  background: #ffffff15;
+  border-radius: 12px;
+  width: 100%;
+  max-width: 450px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.upload-container form {
+  width: 100%;
+}
+
+.upload-container h4 {
+  text-align: center;
+  color: #f8c240;
+}
+
+.form-input {
+  width: 100%;
+  padding: 12px;
+  margin-bottom: 15px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+  font-size: 15px;
+  background-color: #fff;
+  color: #000;
+}
+
+.btn-submit {
+  width: 100%;
+  background-color: #1da447;
+  color: white;
+  font-weight: bold;
+  padding: 12px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+#preview img {
+  display: block;
+  margin: 0 auto;
+  max-width: 300px;
+  border-radius: 8px;
+  box-shadow: 0 0 10px rgba(0,0,0,0.15);
+}
+
+.alert-box {
+  background: #fff0f0;
+  border-radius: 12px;
+  padding: 20px;
+  color: #7b1c1c;
+  margin-top: 20px;
+  width: 100%;
+  text-align: center;
+}

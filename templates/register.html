@@ -1,5 +1,11 @@
 {% extends "base.html" %} {% block title %}Farmer Registration{% endblock %} {%
-block content %}
+block content %} {% block styles %}
+<link
+  rel="stylesheet"
+  href="{{ url_for('static', filename='css/register.css') }}"
+/>
+{% endblock %}
+
 <h2 class="page-title">🧾 Farmer Registration</h2>
 
 {% if success %}

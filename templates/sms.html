@@ -1,5 +1,11 @@
 {% extends "base.html" %} {% block title %}Wildlife Alerts{% endblock %} {%
-block content %}
+block content %} {% block styles %}
+<link
+  rel="stylesheet"
+  href="{{ url_for('static', filename='css/alerts.css') }}"
+/>
+{% endblock %}
+
 <h2 class="page-title">🚨 Wildlife Alert System</h2>
 
 <div class="alert-container">

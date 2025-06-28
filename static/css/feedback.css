@@ -1,0 +1,123 @@
+/* Feedback Page Layout */
+
+.page-title {
+  text-align: center;
+}
+.feedback-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 40px;
+  margin-top: 30px;
+  justify-content: center;
+  align-items: flex-start;
+}
+
+/* Feedback Form */
+.feedback-form {
+  flex: 1;
+  min-width: 300px;
+  max-width: 480px;
+  background: white;
+  padding: 25px 30px;
+  border-radius: 12px;
+  color: #113d2e;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.08);
+}
+
+.feedback-form h3 {
+  margin-bottom: 10px;
+  font-size: 20px;
+}
+
+.feedback-form .form-input {
+  width: 100%;
+  padding: 12px;
+  margin-bottom: 15px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+  font-size: 15px;
+  background: #fff;
+  color: #000;
+  resize: vertical;
+}
+
+/* Star Rating Styling */
+.star-rating {
+  display: flex;
+  flex-direction: row-reverse;
+  justify-content: flex-start;
+  margin: 10px 0 20px;
+}
+
+.star-rating input {
+  display: none;
+}
+
+.star-rating label {
+  font-size: 26px;
+  color: #ccc;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.star-rating input:checked ~ label,
+.star-rating input:hover ~ label {
+  color: #f8c240;
+}
+
+/* Testimonials */
+.feedback-testimonials {
+  flex: 1;
+  min-width: 300px;
+  max-width: 500px;
+  max-height: 450px;
+  overflow-y: auto;
+  background: white;
+  padding: 25px 30px;
+  border-radius: 12px;
+  color: #113d2e;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.08);
+}
+
+.feedback-testimonials h4 {
+  margin-bottom: 15px;
+}
+
+.testimonial {
+  background: #f3f3f3;
+  padding: 15px;
+  border-radius: 10px;
+  margin-bottom: 15px;
+  font-style: italic;
+}
+
+.review-author {
+  display: block;
+  margin-top: 8px;
+  font-size: 13px;
+  color: #1f4d39;
+  font-weight: bold;
+}
+
+.rating-stars {
+  color: gold;
+  font-size: 18px;
+  margin-top: 5px;
+}
+
+/* Submit Button */
+.btn-submit {
+  background-color: #1da447;
+  color: white;
+  font-weight: bold;
+  font-size: 16px;
+  border: none;
+  border-radius: 8px;
+  padding: 12px;
+  width: 100%;
+  cursor: pointer;
+}
+
+.btn-submit:hover {
+  background-color: #168d3a;
+}

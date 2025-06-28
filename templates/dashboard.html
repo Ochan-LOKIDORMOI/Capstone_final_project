@@ -35,19 +35,29 @@ content %}
   </div>
 </section>
 
-<section class="recent-log">
-  <h3>💬 Recent Feedback</h3>
-  {% for fb in feedbacks %}
-  <div class="log-entry">
-    “{{ fb.message }}”<br />
-    <span class="badge">– {{ fb.name }}</span>
-    <div class="rating-stars" style="color: gold; font-size: 1em">
-      {% for i in range(fb.rating) %}★{% endfor %}
-    </div>
+<section class="recent-log2">
+  {% for log in recent_logs %}
+  <div class="log-entry2">
+    <strong>{{ log.action }}</strong><br />
+    {{ log.timestamp }} • {{ log.details }} {% if log.alert_sent %}
+    <span class="badge">Alert Sent</span>
+    {% endif %}
   </div>
-  {% else %}
-  <p>No feedback submitted yet.</p>
   {% endfor %}
+  <div class="recent-log2-container">
+    <h3>💬 Recent Feedback</h3>
+    {% for fb in feedbacks %}
+    <div class="log-entry2">
+      “{{ fb.message }}”<br />
+      <span class="badge">– {{ fb.name }}</span>
+      <div class="rating-stars" style="color: gold; font-size: 1em">
+        {% for i in range(fb.rating) %}★{% endfor %}
+      </div>
+    </div>
+    {% else %}
+    <p>No feedback submitted yet.</p>
+    {% endfor %}
+  </div>
 </section>
 
 {% endblock %} {% block scripts %}
