@@ -6,7 +6,9 @@ content %} {% block styles %}
 />
 {% endblock %}
 
-<h2 class="page-title">👤 Farmer Profile</h2>
+<h2 class="page-title">
+  👤 {{ 'Farmer Profile' if location else 'User Profile' }}
+</h2>
 
 <div class="profile-container">
   <!-- Left: Personal Info -->

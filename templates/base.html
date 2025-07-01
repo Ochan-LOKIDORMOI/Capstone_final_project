@@ -28,8 +28,21 @@
         <a href="/log">Logs</a>
         <a href="/feedback">Feedback</a>
         <a href="/profile">Profile</a>
+        <a href="/admin/farmers">Admin</a>
+        <!-- Optional Admin link -->
       </nav>
     </header>
-    <main class="content">{% block content %}{% endblock %}</main>
+
+    <main class="content">
+      <!-- 🔔 Flash Message Display -->
+      {% with messages = get_flashed_messages(with_categories=true) %} {% if
+      messages %}
+      <div class="flash-messages">
+        {% for category, message in messages %}
+        <div class="flash flash-{{ category }}">{{ message }}</div>
+        {% endfor %}
+      </div>
+      {% endif %} {% endwith %} {% block content %}{% endblock %}
+    </main>
   </body>
 </html>

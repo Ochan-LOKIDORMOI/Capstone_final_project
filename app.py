@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify, redirect, session
+from flask import Flask, render_template, request, redirect, session, url_for, flash, jsonify
 import base64
 import re
 import io
@@ -9,10 +9,10 @@ from PIL import Image
 from dotenv import load_dotenv
 from pymongo import MongoClient
 from datetime import datetime, timedelta
-from bson import ObjectId
 from flask import Response
 import tensorflow as tf
 from twilio.rest import Client
+from flask_bcrypt import Bcrypt
 
 app = Flask(__name__)
 load_dotenv()
@@ -25,10 +25,12 @@ app.secret_key = os.getenv("SECRET_KEY")
 # === MongoDB Setup ===
 mongo_uri = os.getenv("MONGO_URI")
 client = MongoClient(mongo_uri)
+bcrypt = Bcrypt(app)
 db = client.kulinda
 detections_col = db.detections
 farmers_col = db.farmers
 feedback_col = db.feedback
+users_col = db.users
 
 # === Preprocess Image ===
 
@@ -53,18 +55,65 @@ def welcome():
     return render_template('welcome.html')
 
 
-@app.route('/signup')
+@app.route('/signup', methods=['GET', 'POST'])
 def signup():
-    return render_template('auth_register.html')
+    if request.method == 'POST':
+        name = request.form['name'].strip()
+        email = request.form['email'].strip().lower()
+        phone = request.form['phone'].strip()
+        password = request.form['password']
+        confirm_password = request.form['confirm_password']
+
+        if users_col.find_one({"email": email}):
+            return "Email already registered", 400
+        if password != confirm_password:
+            return "Passwords do not match", 400
+
+        hashed_password = bcrypt.generate_password_hash(
+            password).decode('utf-8')
+
+        user = {
+            "name": name,
+            "email": email,
+            "phone": phone,
+            "password": hashed_password,
+            "photo": None,
+            "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        }
+        users_col.insert_one(user)
+
+        return redirect("/login")
+
+    return render_template("auth_register.html")
 
 
-@app.route('/login')
+@app.route('/login', methods=['GET', 'POST'])
 def login():
-    return render_template('auth_login.html')
+    if request.method == 'POST':
+        email = request.form['email'].strip().lower()
+        password = request.form['password']
+
+        user = users_col.find_one({"email": email})
+        if not user:
+            flash("❌ Email not found. Please register first.", "error")
+            return redirect("/login")
+
+        if not bcrypt.check_password_hash(user["password"], password):
+            flash("❌ Incorrect password. Please try again.", "error")
+            return redirect("/login")
+
+        session["user_email"] = user["email"]
+        session["user_name"] = user["name"]
+        return redirect("/dashboard")
+
+    return render_template("auth_login.html")
 
 
-@app.route('/dashboard', methods=['GET', 'POST'])
+@app.route('/dashboard')
 def dashboard():
+    if "user_email" not in session:
+        return redirect("/login")
+
     logs = list(detections_col.find().sort("timestamp", -1).limit(5))
     total = detections_col.count_documents({})
     confidences = [float(log.get("confidence", 0))
@@ -72,9 +121,13 @@ def dashboard():
     accuracy = round(sum(confidences) / len(confidences),
                      2) if confidences else 0
     feedbacks = list(feedback_col.find().sort("submitted_on", -1).limit(2))
+
+    farmer_registered = farmers_col.find_one(
+        {"user_email": session["user_email"]}) is not None
+
     return render_template("dashboard.html", logs=logs, feedbacks=feedbacks, stats={
         "total": total, "alerts": total, "accuracy": accuracy
-    })
+    }, farmer_registered=farmer_registered)
 
 
 @app.route('/detect')
@@ -89,63 +142,92 @@ def upload():
 
 @app.route('/register-farmer', methods=['GET', 'POST'])
 def register_farmer():
-    if request.method == 'POST':
-        farmer = {
-            "name": request.form['name'],
-            "phone": request.form['phone'],
-            "email": request.form.get('email', ''),
-            "location": request.form['location'],
-            "photo": None,
-            "registered_on": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        }
-        result = farmers_col.insert_one(farmer)
-        session['farmer_phone'] = farmer['phone']  # Track with phone number
+    if "user_email" not in session:
+        return redirect("/login")
+
+    user_email = session['user_email']
+
+    # 🔒 Always prevent duplicate registrations
+    existing_farmer = farmers_col.find_one({"user_email": user_email})
+    if existing_farmer:
+        flash("✅ You are already registered as a farmer.", "info")
         return redirect("/profile")
+
+    # ✅ Handle new registration
+    if request.method == 'POST':
+        phone = request.form['phone'].strip()
+
+        if farmers_col.find_one({"phone": phone}):
+            return render_template("register.html", error="❌ This phone number is already registered.")
+
+        farmer = {
+            "name": request.form['name'].strip(),
+            "phone": phone,
+            "email": request.form.get('email', '').strip(),
+            "location": request.form['location'].strip(),
+            "photo": None,
+            "registered_on": datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+            "user_email": user_email
+        }
+
+        farmers_col.insert_one(farmer)
+        session['farmer_phone'] = farmer['phone']
+        flash("✅ Farmer registered successfully!", "success")
+        return redirect("/profile")
+
+    # 🧾 Show blank form if not registered yet
     return render_template("register.html")
+
+
+@app.route("/admin/farmers")
+def list_farmers():
+    if "user_email" not in session:
+        return redirect("/login")
+
+    farmers = list(farmers_col.find().sort("registered_on", -1))
+    return render_template("admin_farmers.html", farmers=farmers)
 
 
 @app.route("/profile")
 def profile():
-    phone = session.get("farmer_phone")
-    if not phone:
-        return "No farmer in session", 403
+    if "user_email" not in session:
+        return redirect("/login")
 
-    farmer = farmers_col.find_one({"phone": phone})
-    if not farmer:
-        return "Farmer not found", 404
+    user = users_col.find_one({"email": session["user_email"]})
+    if not user:
+        return redirect("/login")
 
     return render_template("profile.html",
-                           _id=str(farmer.get("_id")),
-                           name=farmer.get("name", ""),
-                           phone=farmer.get("phone", ""),
-                           email=farmer.get("email", ""),
-                           location=farmer.get("location", ""),
-                           photo=farmer.get("photo"))
+                           _id=str(user.get("_id")),
+                           name=user.get("name", ""),
+                           phone=user.get("phone", ""),
+                           email=user.get("email", ""),
+                           location=user.get("location", ""),
+                           photo=user.get("photo"))
 
 
 @app.route('/update-profile', methods=["POST"])
 def update_profile():
-    phone = session.get("farmer_phone")
-    if not phone:
-        return "Missing session phone", 403
+    if "user_email" not in session:
+        return redirect("/login")
 
-    # Safely extract and filter updated values
-    updates = {k: v for k, v in request.form.items()
+    updates = {k: v.strip() for k, v in request.form.items()
                if k in ['name', 'email', 'phone', 'location'] and v.strip()}
 
-    # Handle optional profile picture update
     file = request.files.get("avatar")
     if file and file.filename:
         updates["photo"] = "data:image/jpeg;base64," + \
             base64.b64encode(file.read()).decode("utf-8")
 
-    # Perform the update
-    farmers_col.update_one({"phone": phone}, {"$set": updates})
+    users_col.update_one({"email": session["user_email"]}, {"$set": updates})
 
-    # If phone number changed, update session
-    if "phone" in updates:
-        session["farmer_phone"] = updates["phone"]
+    # Refresh session in case user changed their email or name
+    if "name" in updates:
+        session["user_name"] = updates["name"]
+    if "email" in updates:
+        session["user_email"] = updates["email"]
 
+    flash("✅ Profile updated successfully", "success")
     return redirect("/profile")
 
 

@@ -1,0 +1,33 @@
+{% extends "base.html" %} {% block title %}All Farmers{% endblock %} {% block
+content %} {% block styles %}
+<link
+  rel="stylesheet"
+  href="{{ url_for('static', filename='css/admin_farmers.css') }}"
+/>
+{% endblock %}
+
+<h2 class="page-title">👥 Registered Farmers</h2>
+
+<table class="farmer-table">
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Email</th>
+      <th>Phone</th>
+      <th>Location</th>
+      <th>Registered On</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for farmer in farmers %}
+    <tr>
+      <td>{{ farmer.name }}</td>
+      <td>{{ farmer.email }}</td>
+      <td>{{ farmer.phone }}</td>
+      <td>{{ farmer.location }}</td>
+      <td>{{ farmer.registered_on }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}
