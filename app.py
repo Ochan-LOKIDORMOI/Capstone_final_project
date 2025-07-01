@@ -109,6 +109,13 @@ def login():
     return render_template("auth_login.html")
 
 
+@app.route('/logout')
+def logout():
+    session.clear()
+    flash("👋 You have been logged out successfully.", "success")
+    return redirect("/login")
+
+
 @app.route('/dashboard')
 def dashboard():
     if "user_email" not in session:
