@@ -362,8 +362,14 @@ def predict():
 
         preds = model.predict(img_array)[0]
         class_names = ['Elephant', 'Monkey', 'Buffalo']
-        label = class_names[int(np.argmax(preds))]
+        max_index = int(np.argmax(preds))
         confidence = float(np.max(preds)) * 100
+
+        # ✅ Skip low-confidence predictions
+        if confidence < 75:
+            return jsonify({})  # Empty response, nothing logged
+
+        label = class_names[max_index]
 
         latest_farmer = farmers_col.find_one(sort=[("registered_on", -1)])
         phone = latest_farmer.get("phone") if latest_farmer else None
@@ -379,18 +385,17 @@ def predict():
             "farmer_phone": phone
         }
 
-        # Insert into MongoDB and attach _id
+        # Insert into MongoDB
         insert_result = detections_col.insert_one(result)
         result["_id"] = str(insert_result.inserted_id)
 
-        # ✅ Send SMS to the farmer if phone is present
+        # Send SMS if phone is valid
         if phone:
             formatted_phone = phone.strip()
             if formatted_phone.startswith("0"):
-                formatted_phone = "+250" + \
-                    formatted_phone[1:]  # assumes Rwanda
+                formatted_phone = "+250" + formatted_phone[1:]
             elif not formatted_phone.startswith("+"):
-                formatted_phone = "+250" + formatted_phone  # fallback
+                formatted_phone = "+250" + formatted_phone
 
             try:
                 send_sms_real(
@@ -401,6 +406,11 @@ def predict():
                 )
             except Exception as sms_err:
                 print("❌ SMS Error:", sms_err)
+
+        return jsonify(result)
+
+    except Exception as e:
+        return jsonify({"error": str(e)})
 
         return jsonify(result)
 

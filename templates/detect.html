@@ -1,8 +1,9 @@
 {% extends "base.html" %} {% block title %}Real-Time Detection{% endblock %} {%
-block content %}
-
-{% block styles %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/detect.css') }}">
+block content %} {% block styles %}
+<link
+  rel="stylesheet"
+  href="{{ url_for('static', filename='css/detect.css') }}"
+/>
 {% endblock %}
 
 <h2 class="page-title">🔴 Real Time Detection</h2>
@@ -50,20 +51,21 @@ block content %}
     })
       .then((res) => res.json())
       .then((data) => {
-        resultBox.style.display = "block";
-
-        if (data.error) {
-          resultText.innerText = "Prediction failed. Try again.";
-          console.error("Prediction error:", data.error);
-        } else {
-          const label = data.label || "Unknown";
-          const confidence = data.confidence ?? "N/A";
-          resultText.innerText = `${label} Detected\nConfidence: ${confidence}%`;
+        // ✅ Ignore empty or low-confidence predictions
+        if (!data || !data.label || data.label === "Unknown") {
+          resultBox.style.display = "none"; // Hide alert box
+          return;
         }
+
+        resultBox.style.display = "block";
+        const label = data.label;
+        const confidence = data.confidence ?? "N/A";
+        resultText.innerText = `${label} Detected\nConfidence: ${confidence}%`;
       })
       .catch((error) => {
         console.error("Fetch error:", error);
         resultText.innerText = "Failed to fetch prediction.";
+        resultBox.style.display = "block";
       });
   }
 
