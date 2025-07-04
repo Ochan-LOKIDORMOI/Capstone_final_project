@@ -154,16 +154,13 @@ def register_farmer():
 
     user_email = session['user_email']
 
-    # 🔒 Always prevent duplicate registrations
-    existing_farmer = farmers_col.find_one({"user_email": user_email})
-    if existing_farmer:
-        flash("✅ You are already registered as a farmer.", "info")
-        return redirect("/profile")
-
-    # ✅ Handle new registration
     if request.method == 'POST':
-        phone = request.form['phone'].strip()
+        # Prevent duplicate registration on submit
+        if farmers_col.find_one({"user_email": user_email}):
+            flash("❌ You are already registered as a farmer.", "error")
+            return redirect("/profile")
 
+        phone = request.form['phone'].strip()
         if farmers_col.find_one({"phone": phone}):
             return render_template("register.html", error="❌ This phone number is already registered.")
 
@@ -182,17 +179,8 @@ def register_farmer():
         flash("✅ Farmer registered successfully!", "success")
         return redirect("/profile")
 
-    # 🧾 Show blank form if not registered yet
+    # On GET: always show form
     return render_template("register.html")
-
-
-@app.route("/admin/farmers")
-def list_farmers():
-    if "user_email" not in session:
-        return redirect("/login")
-
-    farmers = list(farmers_col.find().sort("registered_on", -1))
-    return render_template("admin_farmers.html", farmers=farmers)
 
 
 @app.route("/profile")
@@ -200,17 +188,32 @@ def profile():
     if "user_email" not in session:
         return redirect("/login")
 
-    user = users_col.find_one({"email": session["user_email"]})
-    if not user:
-        return redirect("/login")
+    user_email = session["user_email"]
 
-    return render_template("profile.html",
-                           _id=str(user.get("_id")),
-                           name=user.get("name", ""),
-                           phone=user.get("phone", ""),
-                           email=user.get("email", ""),
-                           location=user.get("location", ""),
-                           photo=user.get("photo"))
+    # Check if user has registered as a farmer
+    farmer = farmers_col.find_one({"user_email": user_email})
+    if farmer:
+        # Use farmer info if available
+        return render_template("profile.html",
+                               _id=str(farmer.get("_id")),
+                               name=farmer.get("name", ""),
+                               phone=farmer.get("phone", ""),
+                               email=farmer.get("email", ""),
+                               location=farmer.get("location", ""),
+                               photo=farmer.get("photo"))
+    else:
+        # Otherwise fallback to basic user info
+        user = users_col.find_one({"email": user_email})
+        if not user:
+            return redirect("/login")
+
+        return render_template("profile.html",
+                               _id=str(user.get("_id")),
+                               name=user.get("name", ""),
+                               phone=user.get("phone", ""),
+                               email=user.get("email", ""),
+                               location=user.get("location", ""),
+                               photo=user.get("photo"))
 
 
 @app.route('/update-profile', methods=["POST"])
@@ -218,6 +221,7 @@ def update_profile():
     if "user_email" not in session:
         return redirect("/login")
 
+    user_email = session["user_email"]
     updates = {k: v.strip() for k, v in request.form.items()
                if k in ['name', 'email', 'phone', 'location'] and v.strip()}
 
@@ -226,9 +230,12 @@ def update_profile():
         updates["photo"] = "data:image/jpeg;base64," + \
             base64.b64encode(file.read()).decode("utf-8")
 
-    users_col.update_one({"email": session["user_email"]}, {"$set": updates})
+    # Update users collection
+    users_col.update_one({"email": user_email}, {"$set": updates})
 
-    # Refresh session in case user changed their email or name
+    # If user is a farmer, also update farmers collection
+    farmers_col.update_one({"user_email": user_email}, {"$set": updates})
+
     if "name" in updates:
         session["user_name"] = updates["name"]
     if "email" in updates:
