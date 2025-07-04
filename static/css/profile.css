@@ -86,3 +86,63 @@
 .update-card .btn-submit:hover {
   background-color: #17893b;
 }
+
+/* ===================== Responsive Profile Layout ===================== */
+
+/* Phones and small devices */
+@media (max-width: 600px) {
+  .profile-container {
+    flex-direction: column;
+    padding: 0 15px;
+    gap: 20px;
+  }
+
+  .profile-left,
+  .profile-right {
+    width: 100%;
+    min-width: 100%;
+  }
+
+  .profile-card,
+  .update-card {
+    padding: 20px;
+  }
+
+  .profile-avatar {
+    width: 100px;
+    height: 100px;
+    margin-bottom: 10px;
+  }
+
+  .update-card h4 {
+    font-size: 18px;
+    text-align: center;
+  }
+
+  .update-card label {
+    font-size: 13px;
+  }
+
+  .update-card .btn-submit {
+    font-size: 15px;
+    padding: 10px;
+  }
+}
+
+/* Tablets and small laptops */
+@media (min-width: 601px) and (max-width: 992px) {
+  .profile-container {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .profile-left,
+  .profile-right {
+    width: 90%;
+  }
+
+  .update-card,
+  .profile-card {
+    padding: 25px;
+  }
+}
