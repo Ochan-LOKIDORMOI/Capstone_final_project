@@ -12,67 +12,69 @@
   <body>
     <header class="header">
       <div class="header-inner">
-        <!-- Left: Logo and Title -->
-        <div class="logo">
+        <!-- ✅ Logo (clickable on small screens) -->
+        <div class="logo" id="logo">
           <img
             src="{{ url_for('static', filename='images/Kulinda.png') }}"
             alt="Kulinda Shamba Logo"
           />
-          <div>
+          <div class="logo-text">
             <h1>LINDA SHAMBA</h1>
             <p>Wildlife Detection & Farm Protection</p>
           </div>
         </div>
 
-        <!-- Right: Navigation Links -->
-        <nav class="main-nav">
-          <a
-            href="/dashboard"
-            class="{{ 'active' if request.path == '/dashboard' else '' }}"
-            >Dashboard</a
-          >
-          <a
-            href="/detect"
-            class="{{ 'active' if request.path == '/detect' else '' }}"
-            >Detection</a
-          >
-          <a
-            href="/upload"
-            class="{{ 'active' if request.path == '/upload' else '' }}"
-            >Predict</a
-          >
-          <a
-            href="/register-farmer"
-            class="{{ 'active' if request.path == '/register-farmer' else '' }}"
-            >Register</a
-          >
-          <a
-            href="/sms"
-            class="{{ 'active' if request.path == '/sms' else '' }}"
-            >SMS Alerts</a
-          >
-          <a
-            href="/log"
-            class="{{ 'active' if request.path == '/log' else '' }}"
-            >Logs</a
-          >
-          <a
-            href="/feedback"
-            class="{{ 'active' if request.path == '/feedback' else '' }}"
-            >Feedback</a
-          >
-          <a
-            href="/profile"
-            class="{{ 'active' if request.path == '/profile' else '' }}"
-            >Profile</a
-          >
-          <a href="/logout">Logout</a>
-        </nav>
+        <!-- ✅ Nav + toggle button -->
+        <div class="nav-container">
+          <button id="nav-toggle" class="nav-toggle">&#9776;</button>
+          <nav id="main-nav" class="main-nav">
+            <a
+              href="/dashboard"
+              class="{{ 'active' if request.path == '/dashboard' else '' }}"
+              >Dashboard</a
+            >
+            <a
+              href="/detect"
+              class="{{ 'active' if request.path == '/detect' else '' }}"
+              >Detection</a
+            >
+            <a
+              href="/upload"
+              class="{{ 'active' if request.path == '/upload' else '' }}"
+              >Predict</a
+            >
+            <a
+              href="/register-farmer"
+              class="{{ 'active' if request.path == '/register-farmer' else '' }}"
+              >Register</a
+            >
+            <a
+              href="/sms"
+              class="{{ 'active' if request.path == '/sms' else '' }}"
+              >SMS Alerts</a
+            >
+            <a
+              href="/log"
+              class="{{ 'active' if request.path == '/log' else '' }}"
+              >Logs</a
+            >
+            <a
+              href="/feedback"
+              class="{{ 'active' if request.path == '/feedback' else '' }}"
+              >Feedback</a
+            >
+            <a
+              href="/profile"
+              class="{{ 'active' if request.path == '/profile' else '' }}"
+              >Profile</a
+            >
+            <a href="/logout">Logout</a>
+          </nav>
+        </div>
       </div>
     </header>
 
     <main class="content">
-      <!-- Flash Messages -->
       {% with messages = get_flashed_messages(with_categories=true) %} {% if
       messages %}
       <div class="flash-messages">
@@ -82,5 +84,19 @@
       </div>
       {% endif %} {% endwith %} {% block content %}{% endblock %}
     </main>
+
+    <!-- ✅ JS for sidebar and logo-text toggle -->
+    <script>
+      const toggleBtn = document.getElementById("nav-toggle");
+      const nav = document.getElementById("main-nav");
+      toggleBtn.addEventListener("click", () => {
+        nav.classList.toggle("show");
+      });
+
+      const logo = document.getElementById("logo");
+      logo.addEventListener("click", () => {
+        logo.classList.toggle("show-text");
+      });
+    </script>
   </body>
 </html>
