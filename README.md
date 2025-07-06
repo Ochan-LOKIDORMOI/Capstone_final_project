@@ -69,6 +69,8 @@ Visit http://localhost:5000
 
 ## 🌍 Live Deployment
 
+### *Coming soon..............*
+
 ## 📊 Screenshot Highlights
 
 - Real-time detection working on webcam
