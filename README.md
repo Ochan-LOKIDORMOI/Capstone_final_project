@@ -60,7 +60,6 @@ Visit http://localhost:5000
 ## 🧪 Testing Highlights
 
 - ✅ Detects Elephant, Monkey, Buffalo from camera and uploads
-- ✅ Skips predictions under 75% confidence
 - ✅ Saves detections to MongoDB
 - ✅ Sends SMS alerts on detection
 - ✅ Accurate visual logs and feedback from multiple users
