@@ -60,7 +60,6 @@ Visit http://localhost:5000
 ## 🧪 Testing Highlights
 
 - ✅ Detects Elephant, Monkey, Buffalo from camera and uploads
-- ✅ Skips predictions under 75% confidence
 - ✅ Saves detections to MongoDB
 - ✅ Sends SMS alerts on detection
 - ✅ Accurate visual logs and feedback from multiple users
@@ -69,6 +68,8 @@ Visit http://localhost:5000
 ## 🎥 Demo Video (5 Minutes)
 
 ## 🌍 Live Deployment
+
+### *Coming soon..............*
 
 ## 📊 Screenshot Highlights
 
@@ -80,9 +81,8 @@ Visit http://localhost:5000
   
 ## 🔍 Analysis of Results
 
-- The system met its core objective of detecting animals like elephants, monkeys, and buffaloes with over 75% confidence. 
+- The system met some of its core objective of detecting animals like elephants, monkeys, and buffaloes with over 75% confidence. 
 - The use of **ModelCheckpoint** during training ensured that only the best-performing model was saved.
-- During testing, predictions with low confidence were filtered out, increasing reliability.
 - SMS alerts were successfully triggered for high-confidence detections, and all activities were stored in MongoDB.
 -  Overall, the system achieved its goals of wildlife detection, alerting, and farmer engagement as outlined in the project proposal.
 
@@ -90,7 +90,6 @@ Visit http://localhost:5000
 - Each milestone contributed critically to the system's functionality.
 - Early integration of Flask and MongoDB allowed us to track and store real detections.
 - Adding Twilio SMS expanded the impact by notifying farmers even without smartphones.
-- The UI/UX improvements and responsive sidebar enhanced usability across devices.
 - The system’s ability to scale and adapt shows potential for practical deployment in regions affected by human-wildlife conflict.
 -  Through this project, I learned the importance of iterative testing, threshold tuning, and user-centered design in building systems for real-world challenges.
 
@@ -101,7 +100,6 @@ Visit http://localhost:5000
 - **MongoDB Atlas** – Database
 - **Twilio API** – SMS delivery
 - **HTML/CSS/JS** – Frontend
-- **Render.com** – Deployment
 
 ## 📌 Future Work
 
