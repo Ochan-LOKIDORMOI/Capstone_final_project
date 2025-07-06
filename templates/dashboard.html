@@ -22,17 +22,18 @@ content %}
 <section class="recent-log">
   <h3>Recent Detections</h3>
   <div id="recent-detections">
-    {% for log in logs %}
+    {% for log in logs %} {% if loop.index <= 5 %}
     <div class="log-entry">
       <strong>
         {% if log.label == 'Elephant' %} 🐘 {% elif log.label == 'Monkey' %} 🐒
-        {% else %} 🐾 {% endif %} {{ log.label }} detected </strong
+        {% elif log.label == 'Buffalo' %} 🐃 {% else %} 🐾 {% endif %} {{
+        log.label }} detected </strong
       ><br />
       {{ log.timestamp }} • {{ log.confidence }}% confidence • {{ log.location
       or 'Unknown' }}
       <span class="badge">Alert Sent</span>
     </div>
-    {% endfor %}
+    {% endif %} {% endfor %}
   </div>
 </section>
 
@@ -59,19 +60,15 @@ content %}
       .then((data) => {
         if (!data.label) return;
 
-        const totalElem = document.getElementById("total-detections");
-        const alertsElem = document.getElementById("alerts-sent");
-        const accuracyElem = document.getElementById("accuracy");
-
-        if (totalElem && alertsElem) {
-          totalElem.innerHTML = `${
-            parseInt(totalElem.innerText) + 1
-          }<br><span>Total Detections</span>`;
-          alertsElem.innerHTML = `${
-            parseInt(alertsElem.innerText) + 1
-          }<br><span>Alerts Sent</span>`;
-          accuracyElem.innerHTML = `${data.confidence}%<br><span>Accuracy Rate</span>`;
-        }
+        document.getElementById("total-detections").innerHTML = `${
+          parseInt(document.getElementById("total-detections").innerText) + 1
+        }<br><span>Total Detections</span>`;
+        document.getElementById("alerts-sent").innerHTML = `${
+          parseInt(document.getElementById("alerts-sent").innerText) + 1
+        }<br><span>Alerts Sent</span>`;
+        document.getElementById(
+          "accuracy"
+        ).innerHTML = `${data.confidence}%<br><span>Accuracy Rate</span>`;
 
         const entry = document.createElement("div");
         entry.classList.add("log-entry");
@@ -86,12 +83,15 @@ content %}
           ${data.timestamp} • ${data.confidence}% confidence • ${data.location}
           <span class="badge">Alert Sent</span>
         `;
-
         const container = document.getElementById("recent-detections");
         container.prepend(entry);
+        if (container.children.length > 5) {
+          container.lastElementChild.remove();
+        }
       });
   }
 
-  setInterval(updateDashboard, 8000);
+  // Poll less frequently to improve performance
+  setInterval(updateDashboard, 15000);
 </script>
 {% endblock %}

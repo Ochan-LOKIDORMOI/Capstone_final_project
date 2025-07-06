@@ -4,6 +4,7 @@ import re
 import io
 import csv
 import os
+import threading
 import numpy as np
 from PIL import Image, ImageEnhance
 from dotenv import load_dotenv
@@ -37,16 +38,8 @@ users_col = db.users
 
 def preprocess_image(image_bytes):
     image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
-
-    # 🛠️ Enhance quality for webcam inputs
-    image = ImageEnhance.Contrast(image).enhance(1.2)
-    image = ImageEnhance.Sharpness(image).enhance(1.5)
-
-    # ✅ Match your model's input shape — adjust if needed
-    image = image.resize((150, 150))  # or (224, 224) depending on your model
-
-    image_array = np.array(image) / 255.0
-    return np.expand_dims(image_array, axis=0)
+    image = image.resize((150, 150))
+    return np.expand_dims(np.array(image) / 255.0, axis=0)
 
 
 # === SMS ===
@@ -380,7 +373,7 @@ def predict():
 
         # 🛑 4. Skip low-confidence predictions
         if confidence < 75:
-            return jsonify({})
+            return jsonify({})  # Do not log or alert
 
         label = class_names[max_index]
 
@@ -405,24 +398,27 @@ def predict():
         insert_result = detections_col.insert_one(result)
         result["_id"] = str(insert_result.inserted_id)
 
-        # 📲 8. Send SMS
+        # 📲 8. Send SMS in background
         if phone:
-            formatted_phone = phone.strip()
-            if formatted_phone.startswith("0"):
-                formatted_phone = "+250" + formatted_phone[1:]
-            elif not formatted_phone.startswith("+"):
-                formatted_phone = "+250" + formatted_phone
+            def sms_job():
+                formatted_phone = phone.strip()
+                if formatted_phone.startswith("0"):
+                    formatted_phone = "+250" + formatted_phone[1:]
+                elif not formatted_phone.startswith("+"):
+                    formatted_phone = "+250" + formatted_phone
 
-            try:
-                send_sms_real(
-                    formatted_phone,
-                    f"LINDA ALERT 🚨\n"
-                    f"Hi {latest_farmer.get('name', 'Farmer')},\n"
-                    f"{label} has been detected on your farm in {location}.\n"
-                    f"The deterrent has been activated."
-                )
-            except Exception as sms_err:
-                print("❌ SMS Error:", sms_err)
+                try:
+                    send_sms_real(
+                        formatted_phone,
+                        f"LINDA ALERT 🚨\n"
+                        f"Hi {name},\n"
+                        f"{label} has been detected on your farm in {location}.\n"
+                        f"The deterrent has been activated."
+                    )
+                except Exception as sms_err:
+                    print("❌ SMS Error:", sms_err)
+
+            threading.Thread(target=sms_job).start()
 
         # ✅ 9. Return prediction result
         return jsonify(result)

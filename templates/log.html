@@ -40,7 +40,7 @@ content %} {% block styles %}
       </tr>
     </thead>
     <tbody id="log-table-body">
-      {% for log in logs %}
+      {% for log in logs %} {% if loop.index <= 100 %}
       <tr data-view="{{ log.view }}">
         <td>
           {{ log.timestamp.split(' ')[1] }}<br />{{ log.timestamp.split(' ')[0]
@@ -55,7 +55,7 @@ content %} {% block styles %}
         <td>{{ log.location or 'Unknown' }}</td>
         <td><span class="badge">Sent</span></td>
       </tr>
-      {% endfor %}
+      {% endif %} {% endfor %}
     </tbody>
   </table>
 </div>
@@ -75,8 +75,6 @@ content %} {% block styles %}
     });
   }
 
-  // Set default view on page load
   window.onload = () => filterLogs("day");
 </script>
-
 {% endblock %}
