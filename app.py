@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, session, url_for, flash, jsonify
+from flask import Flask, render_template, request, redirect, session, url_for, flash, jsonify, Response
 import base64
 import re
 import io
@@ -6,32 +6,29 @@ import csv
 import os
 import threading
 import numpy as np
-from PIL import Image, ImageEnhance
+from PIL import Image
 from dotenv import load_dotenv
 from pymongo import MongoClient
 from datetime import datetime, timedelta
-from flask import Response
 import tensorflow as tf
 from twilio.rest import Client
 from flask_bcrypt import Bcrypt
 
 app = Flask(__name__)
 load_dotenv()
-
-# === Load Model ===
-MODEL_PATH = 'model/model2.h5'
-model = tf.keras.models.load_model(MODEL_PATH)
 app.secret_key = os.getenv("SECRET_KEY")
 
+# === Load Model ===
+model = tf.keras.models.load_model('model/model2.h5')
+
 # === MongoDB Setup ===
-mongo_uri = os.getenv("MONGO_URI")
-client = MongoClient(mongo_uri)
-bcrypt = Bcrypt(app)
+client = MongoClient(os.getenv("MONGO_URI"))
 db = client.kulinda
 detections_col = db.detections
 farmers_col = db.farmers
 feedback_col = db.feedback
 users_col = db.users
+bcrypt = Bcrypt(app)
 
 # === Preprocess Image ===
 
@@ -41,8 +38,7 @@ def preprocess_image(image_bytes):
     image = image.resize((150, 150))
     return np.expand_dims(np.array(image) / 255.0, axis=0)
 
-
-# === SMS ===
+# === Send SMS ===
 
 
 def send_sms_real(phone, message):
@@ -53,8 +49,7 @@ def send_sms_real(phone, message):
 
 
 @app.route('/')
-def welcome():
-    return render_template('welcome.html')
+def welcome(): return render_template('welcome.html')
 
 
 @app.route('/signup', methods=['GET', 'POST'])
@@ -65,27 +60,18 @@ def signup():
         phone = request.form['phone'].strip()
         password = request.form['password']
         confirm_password = request.form['confirm_password']
-
         if users_col.find_one({"email": email}):
             return "Email already registered", 400
         if password != confirm_password:
             return "Passwords do not match", 400
-
         hashed_password = bcrypt.generate_password_hash(
             password).decode('utf-8')
-
-        user = {
-            "name": name,
-            "email": email,
-            "phone": phone,
-            "password": hashed_password,
-            "photo": None,
+        users_col.insert_one({
+            "name": name, "email": email, "phone": phone,
+            "password": hashed_password, "photo": None,
             "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        }
-        users_col.insert_one(user)
-
+        })
         return redirect("/login")
-
     return render_template("auth_register.html")
 
 
@@ -94,27 +80,23 @@ def login():
     if request.method == 'POST':
         email = request.form['email'].strip().lower()
         password = request.form['password']
-
         user = users_col.find_one({"email": email})
         if not user:
-            flash("❌ Email not found. Please register first.", "error")
+            flash("❌ Email not found.", "error")
             return redirect("/login")
-
         if not bcrypt.check_password_hash(user["password"], password):
-            flash("❌ Incorrect password. Please try again.", "error")
+            flash("❌ Incorrect password.", "error")
             return redirect("/login")
-
         session["user_email"] = user["email"]
         session["user_name"] = user["name"]
         return redirect("/dashboard")
-
     return render_template("auth_login.html")
 
 
 @app.route('/logout')
 def logout():
     session.clear()
-    flash("👋 You have been logged out successfully.", "success")
+    flash("👋 Logged out successfully.", "success")
     return redirect("/login")
 
 
@@ -122,7 +104,6 @@ def logout():
 def dashboard():
     if "user_email" not in session:
         return redirect("/login")
-
     logs = list(detections_col.find().sort("timestamp", -1).limit(5))
     total = detections_col.count_documents({})
     confidences = [float(log.get("confidence", 0))
@@ -130,42 +111,33 @@ def dashboard():
     accuracy = round(sum(confidences) / len(confidences),
                      2) if confidences else 0
     feedbacks = list(feedback_col.find().sort("submitted_on", -1).limit(2))
-
     farmer_registered = farmers_col.find_one(
         {"user_email": session["user_email"]}) is not None
-
     return render_template("dashboard.html", logs=logs, feedbacks=feedbacks, stats={
         "total": total, "alerts": total, "accuracy": accuracy
     }, farmer_registered=farmer_registered)
 
 
 @app.route('/detect')
-def detect():
-    return render_template('detect.html')
+def detect(): return render_template('detect.html')
 
 
 @app.route('/upload')
-def upload():
-    return render_template("upload.html")
+def upload(): return render_template("upload.html")
 
 
 @app.route('/register-farmer', methods=['GET', 'POST'])
 def register_farmer():
     if "user_email" not in session:
         return redirect("/login")
-
     user_email = session['user_email']
-
     if request.method == 'POST':
-        # Prevent duplicate registration on submit
         if farmers_col.find_one({"user_email": user_email}):
-            flash("❌ You are already registered as a farmer.", "error")
+            flash("❌ Already registered.", "error")
             return redirect("/profile")
-
         phone = request.form['phone'].strip()
         if farmers_col.find_one({"phone": phone}):
-            return render_template("register.html", error="❌ This phone number is already registered.")
-
+            return render_template("register.html", error="❌ Phone already used.")
         farmer = {
             "name": request.form['name'].strip(),
             "phone": phone,
@@ -175,13 +147,10 @@ def register_farmer():
             "registered_on": datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
             "user_email": user_email
         }
-
         farmers_col.insert_one(farmer)
         session['farmer_phone'] = farmer['phone']
-        flash("✅ Farmer registered successfully!", "success")
+        flash("✅ Farmer registered!", "success")
         return redirect("/profile")
-
-    # On GET: always show form
     return render_template("register.html")
 
 
@@ -189,74 +158,42 @@ def register_farmer():
 def profile():
     if "user_email" not in session:
         return redirect("/login")
-
     user_email = session["user_email"]
-
-    # Check if user has registered as a farmer
     farmer = farmers_col.find_one({"user_email": user_email})
     if farmer:
-        # Use farmer info if available
-        return render_template("profile.html",
-                               _id=str(farmer.get("_id")),
-                               name=farmer.get("name", ""),
-                               phone=farmer.get("phone", ""),
-                               email=farmer.get("email", ""),
-                               location=farmer.get("location", ""),
-                               photo=farmer.get("photo"))
-    else:
-        # Otherwise fallback to basic user info
-        user = users_col.find_one({"email": user_email})
-        if not user:
-            return redirect("/login")
-
-        return render_template("profile.html",
-                               _id=str(user.get("_id")),
-                               name=user.get("name", ""),
-                               phone=user.get("phone", ""),
-                               email=user.get("email", ""),
-                               location=user.get("location", ""),
-                               photo=user.get("photo"))
+        return render_template("profile.html", **{**farmer, "_id": str(farmer.get("_id"))})
+    user = users_col.find_one({"email": user_email})
+    return render_template("profile.html", **{**user, "_id": str(user.get("_id"))})
 
 
 @app.route('/update-profile', methods=["POST"])
 def update_profile():
     if "user_email" not in session:
         return redirect("/login")
-
     user_email = session["user_email"]
     updates = {k: v.strip() for k, v in request.form.items()
                if k in ['name', 'email', 'phone', 'location'] and v.strip()}
-
     file = request.files.get("avatar")
     if file and file.filename:
         updates["photo"] = "data:image/jpeg;base64," + \
             base64.b64encode(file.read()).decode("utf-8")
-
-    # Update users collection
     users_col.update_one({"email": user_email}, {"$set": updates})
-
-    # If user is a farmer, also update farmers collection
     farmers_col.update_one({"user_email": user_email}, {"$set": updates})
-
-    if "name" in updates:
-        session["user_name"] = updates["name"]
-    if "email" in updates:
-        session["user_email"] = updates["email"]
-
-    flash("✅ Profile updated successfully", "success")
+    session.update({k: updates[k]
+                   for k in ['user_name', 'user_email'] if k in updates})
+    flash("✅ Profile updated", "success")
     return redirect("/profile")
 
 
 @app.route('/sms')
-def sms():
-    return render_template('sms.html')
+def sms(): return render_template('sms.html')
 
 
 @app.route('/test-sms', methods=['POST'])
 def test_sms():
     try:
         send_sms_real(request.form['phone'], request.form['message'])
-        return render_template('sms.html', success="SMS sent successfully!")
+        return render_template('sms.html', success="SMS sent.")
     except Exception as e:
         return render_template('sms.html', error=str(e))
 
@@ -265,39 +202,28 @@ def test_sms():
 def log():
     now = datetime.now()
     logs_cursor = detections_col.find().sort("timestamp", -1).limit(100)
-
     formatted = []
     for d in logs_cursor:
-        timestamp_str = d.get("timestamp")
         try:
-            timestamp = datetime.strptime(timestamp_str, '%Y-%m-%d %H:%M:%S')
-        except Exception:
-            continue  # skip if timestamp is invalid
-
-        view = (
-            'day' if timestamp.date() == now.date()
-            else 'week' if timestamp > now - timedelta(days=7)
-            else 'month' if timestamp > now - timedelta(days=30)
-            else 'older'
-        )
-
+            timestamp = datetime.strptime(
+                d.get("timestamp"), '%Y-%m-%d %H:%M:%S')
+        except:
+            continue
+        view = ('day' if timestamp.date() == now.date()
+                else 'week' if timestamp > now - timedelta(days=7)
+                else 'month' if timestamp > now - timedelta(days=30)
+                else 'older')
         formatted.append({
-            "timestamp": timestamp_str,
-            "label": d.get("label", "Unknown"),
+            "timestamp": d.get("timestamp"), "label": d.get("label", "Unknown"),
             "confidence": round(float(d.get("confidence", 0)), 2),
-            "location": d.get("location", "Unknown"),
-            "view": view
+            "location": d.get("location", "Unknown"), "view": view
         })
-
     total = len(formatted)
     avg_confidence = round(sum(l["confidence"]
                            for l in formatted)/total, 2) if total else 0
     unique_animals = len(set(l["label"] for l in formatted))
-
     return render_template("log.html", logs=formatted, stats={
-        "total": total,
-        "avg_confidence": avg_confidence,
-        "unique_animals": unique_animals
+        "total": total, "avg_confidence": avg_confidence, "unique_animals": unique_animals
     })
 
 
@@ -332,8 +258,7 @@ def latest_detection():
     if not latest:
         return jsonify({})
     return jsonify({
-        "_id": str(latest["_id"]),
-        "label": latest.get("label", "Unknown"),
+        "_id": str(latest["_id"]), "label": latest.get("label", "Unknown"),
         "confidence": round(float(latest.get("confidence", 0)), 2),
         "timestamp": latest.get("timestamp"),
         "location": latest.get("location", "Unknown"),
@@ -350,79 +275,52 @@ def feedback():
             "rating": int(request.form["rating"]),
             "submitted_on": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         })
-    return render_template("feedback.html", testimonials=list(feedback_col.find().sort("submitted_on", -1).limit(5)))
+    testimonials = list(feedback_col.find().sort("submitted_on", -1).limit(5))
+    return render_template("feedback.html", testimonials=testimonials)
 
 
 @app.route('/predict', methods=["POST"])
 def predict():
     try:
-        # 🔄 1. Parse incoming base64 image
         data = request.get_json()
-        image_data = data['image']
         img_bytes = base64.b64decode(
-            re.sub('^data:image/.+;base64,', '', image_data))
-
-        # 🧼 2. Preprocess the image
+            re.sub('^data:image/.+;base64,', '', data['image']))
         img_array = preprocess_image(img_bytes)
-
-        # 🤖 3. Run prediction
         preds = model.predict(img_array)[0]
         class_names = ['Elephant', 'Monkey', 'Buffalo']
         max_index = int(np.argmax(preds))
         confidence = float(np.max(preds)) * 100
-
-        # 🛑 4. Skip low-confidence predictions
         if confidence < 75:
-            return jsonify({})  # Do not log or alert
-
+            return jsonify({})
         label = class_names[max_index]
-
-        # 📍 5. Fetch latest farmer info
-        latest_farmer = farmers_col.find_one(sort=[("registered_on", -1)])
-        phone = latest_farmer.get("phone") if latest_farmer else None
-        location = latest_farmer.get(
-            "location") if latest_farmer else "Unknown"
-        name = latest_farmer.get("name") if latest_farmer else "Farmer"
-
-        # 🧾 6. Prepare result
+        farmer = farmers_col.find_one(sort=[("registered_on", -1)])
         result = {
-            "label": label,
-            "confidence": round(confidence, 2),
+            "label": label, "confidence": round(confidence, 2),
             "timestamp": datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-            "location": location,
-            "image": image_data,
-            "farmer_phone": phone
+            "location": farmer.get("location", "Unknown") if farmer else "Unknown",
+            "image": data['image'],
+            "farmer_phone": farmer.get("phone") if farmer else None
         }
+        result["_id"] = str(detections_col.insert_one(result).inserted_id)
 
-        # 🗃️ 7. Insert into MongoDB
-        insert_result = detections_col.insert_one(result)
-        result["_id"] = str(insert_result.inserted_id)
+        def send_sms_background():
+            phone = result["farmer_phone"]
+            if not phone:
+                return
+            if phone.startswith("0"):
+                phone = "+250" + phone[1:]
+            elif not phone.startswith("+"):
+                phone = "+250" + phone
+            try:
+                send_sms_real(phone,
+                              f"LINDA ALERT 🚨\nHi {farmer.get('name', 'Farmer')},\n"
+                              f"{label} detected at {result['location']}.\n"
+                              "Deterrent has been activated.")
+            except Exception as e:
+                print("❌ SMS Error:", e)
 
-        # 📲 8. Send SMS in background
-        if phone:
-            def sms_job():
-                formatted_phone = phone.strip()
-                if formatted_phone.startswith("0"):
-                    formatted_phone = "+250" + formatted_phone[1:]
-                elif not formatted_phone.startswith("+"):
-                    formatted_phone = "+250" + formatted_phone
-
-                try:
-                    send_sms_real(
-                        formatted_phone,
-                        f"LINDA ALERT 🚨\n"
-                        f"Hi {name},\n"
-                        f"{label} has been detected on your farm in {location}.\n"
-                        f"The deterrent has been activated."
-                    )
-                except Exception as sms_err:
-                    print("❌ SMS Error:", sms_err)
-
-            threading.Thread(target=sms_job).start()
-
-        # ✅ 9. Return prediction result
+        threading.Thread(target=send_sms_background).start()
         return jsonify(result)
-
     except Exception as e:
         return jsonify({"error": str(e)})
 
