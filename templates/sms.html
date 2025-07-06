@@ -33,25 +33,16 @@ block content %} {% block styles %}
 <script>
   let lastDetectionId = null;
   let countdownInterval = null;
-  let cleared = false;
-  let soundPlayed = false;
 
   const triggerBtn = document.getElementById("trigger-btn");
   const statusText = document.getElementById("status-text");
   const alertText = document.getElementById("live-alert");
   const imagePreview = document.getElementById("alert-image-preview");
   const countdownElement = document.getElementById("countdown");
-  const audio = new Audio("/static/sounds/alert.mp3");
 
   function updateAlert(data) {
-    // If already cleared and same detection is received, ignore it
-    if (data._id === lastDetectionId && cleared) return;
-
-    // Only update if new detection
     if (data._id && data._id !== lastDetectionId) {
       lastDetectionId = data._id;
-      cleared = false;
-      soundPlayed = false;
 
       alertText.innerHTML = `
         <strong>🚨 ${data.label} Detected at ${data.location}!</strong><br>
@@ -90,25 +81,6 @@ block content %} {% block styles %}
     const time = new Date().toLocaleTimeString();
     const label = alertText.textContent.split("Detected")[0] || "Animal";
     statusText.textContent = `Deterrent activated at ${time} for ${label}`;
-
-    if (!soundPlayed) {
-      audio.play().catch(() => {
-        console.warn("Click to enable audio autoplay");
-      });
-      soundPlayed = true;
-    }
-
-    setTimeout(() => {
-      clearAlert();
-      cleared = true;
-    }, 6000);
-  }
-
-  function clearAlert() {
-    alertText.innerHTML = "Waiting for detections...";
-    imagePreview.innerHTML = "<p>No detection yet</p>";
-    statusText.textContent = "";
-    countdownElement.textContent = "5";
   }
 
   triggerBtn.addEventListener("click", () => {
@@ -128,4 +100,5 @@ block content %} {% block styles %}
 
   setInterval(checkForDetections, 1000);
 </script>
+
 {% endblock %}

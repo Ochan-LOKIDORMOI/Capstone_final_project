@@ -48,6 +48,9 @@ block content %} {% block styles %}
   const resultBox = document.getElementById("result-box");
   const resultText = document.getElementById("prediction-output");
 
+  // Alert sound
+  const alertSound = new Audio("/static/sounds/alert.mp3");
+
   form.addEventListener("submit", function (e) {
     e.preventDefault();
     const file = imageInput.files[0];
@@ -71,8 +74,15 @@ block content %} {% block styles %}
           resultBox.style.display = "block";
           if (data.error) {
             resultText.innerText = "❌ Error: " + data.error;
-          } else {
+          } else if (data.label && data.confidence) {
             resultText.innerText = `${data.label} detected\nConfidence: ${data.confidence}%`;
+
+            // ✅ Play alert sound if valid prediction
+            alertSound.play().catch(() => {
+              console.warn("🔇 Autoplay blocked. Click to allow sound.");
+            });
+          } else {
+            resultText.innerText = "No detection result.";
           }
         })
         .catch((err) => {
@@ -83,4 +93,5 @@ block content %} {% block styles %}
     reader.readAsDataURL(file);
   });
 </script>
+
 {% endblock %}
