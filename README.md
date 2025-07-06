@@ -3,7 +3,9 @@
 
 ## 🌾 Kulinda Shamba: AI Wildlife Detection System
 
-Linda Shamba is a real-time AI-powered system that detects wildlife encroaching on farms. When an animal is detected via camera or image upload, the system sends an SMS alert to the registered farmer to take immediate action. The system also logs all detections in a dashboard and provides insights for analysis.
+- Linda Shamba which means "Protect the farm" is a real-time system that detects wildlife encroaching on farms.
+- When an animal is detected via camera or image upload, the system sends an SMS alert to the registered farmer to take immediate action.
+- The system also logs all detections in a dashboard and provides insights for analysis.
 
 ---
 
