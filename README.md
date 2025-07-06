@@ -73,8 +73,8 @@ Visit http://localhost:5000
 
 ## 📊 Screenshot Highlights
 
-- Real-time detection working on webcam
-- SMS confirmation log
+### - SMS confirmation log
+  ![Image](https://github.com/user-attachments/assets/5b082bb7-eacc-4d70-99be-bbc0f7e29a9c)
 - Dashboard updating stats after each detection
 - Profile registration, photo upload, feedback submission
 - Mobile view with sidebar nav
