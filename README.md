@@ -40,7 +40,7 @@ pip install -r requirements.txt
 
 ### 4 Create ```.env``` File
 ```bash
-Create a file called `.env.example` in your repo:
+Create a file called `.env` in your repo:
 
 SECRET_KEY=your_secret_key
 MONGO_URI=your_mongodb_uri
