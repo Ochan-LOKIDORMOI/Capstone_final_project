@@ -33,20 +33,25 @@ block content %} {% block styles %}
 <script>
   let lastDetectionId = null;
   let countdownInterval = null;
-  const triggerBtn = document.getElementById("trigger-btn");
-  const statusText = document.getElementById("status-text");
-  const audio = new Audio("/static/sounds/alert.mp3");
+  let cleared = false;
   let soundPlayed = false;
 
-  // Function to update the alert display
+  const triggerBtn = document.getElementById("trigger-btn");
+  const statusText = document.getElementById("status-text");
+  const alertText = document.getElementById("live-alert");
+  const imagePreview = document.getElementById("alert-image-preview");
+  const countdownElement = document.getElementById("countdown");
+  const audio = new Audio("/static/sounds/alert.mp3");
+
   function updateAlert(data) {
-    // Only update if this is a new detection
+    // If already cleared and same detection is received, ignore it
+    if (data._id === lastDetectionId && cleared) return;
+
+    // Only update if new detection
     if (data._id && data._id !== lastDetectionId) {
       lastDetectionId = data._id;
+      cleared = false;
       soundPlayed = false;
-
-      const alertText = document.getElementById("live-alert");
-      const imagePreview = document.getElementById("alert-image-preview");
 
       alertText.innerHTML = `
         <strong>🚨 ${data.label} Detected at ${data.location}!</strong><br>
@@ -54,31 +59,22 @@ block content %} {% block styles %}
         Time: ${data.timestamp}
       `;
 
-      if (data.image) {
-        imagePreview.innerHTML = `<img src="${data.image}" alt="Detected ${data.label} at ${data.location}">`;
-      } else {
-        imagePreview.innerHTML = `<p>Image not available</p>`;
-      }
+      imagePreview.innerHTML = data.image
+        ? `<img src="${data.image}" alt="Detected ${data.label} at ${data.location}">`
+        : `<p>Image not available</p>`;
 
       resetCountdown();
       startCountdown();
     }
   }
 
-  // Reset countdown
   function resetCountdown() {
-    if (countdownInterval) {
-      clearInterval(countdownInterval);
-      countdownInterval = null;
-    }
-    document.getElementById("countdown").textContent = "5";
+    if (countdownInterval) clearInterval(countdownInterval);
+    countdownElement.textContent = "5";
   }
 
-  // Start countdown for auto-trigger
   function startCountdown() {
     let seconds = 5;
-    const countdownElement = document.getElementById("countdown");
-
     countdownInterval = setInterval(() => {
       seconds--;
       countdownElement.textContent = seconds;
@@ -90,48 +86,46 @@ block content %} {% block styles %}
     }, 1000);
   }
 
-  // Activate deterrent system
   function activateDeterrent() {
     const time = new Date().toLocaleTimeString();
-    const label = document
-      .getElementById("live-alert")
-      .textContent.split("Detected")[0];
+    const label = alertText.textContent.split("Detected")[0] || "Animal";
     statusText.textContent = `Deterrent activated at ${time} for ${label}`;
 
     if (!soundPlayed) {
-      audio.play().catch((e) => {
-        console.warn(
-          "Autoplay blocked: Click anywhere on the page to allow audio."
-        );
+      audio.play().catch(() => {
+        console.warn("Click to enable audio autoplay");
       });
       soundPlayed = true;
     }
 
-    console.log("Deterrent activated!");
+    setTimeout(() => {
+      clearAlert();
+      cleared = true;
+    }, 6000);
   }
 
-  // Manual trigger button
+  function clearAlert() {
+    alertText.innerHTML = "Waiting for detections...";
+    imagePreview.innerHTML = "<p>No detection yet</p>";
+    statusText.textContent = "";
+    countdownElement.textContent = "5";
+  }
+
   triggerBtn.addEventListener("click", () => {
     resetCountdown();
     activateDeterrent();
   });
 
-  // Check for new detections
   async function checkForDetections() {
     try {
-      const response = await fetch("/latest-detection");
-      const data = await response.json();
-      if (data._id) {
-        updateAlert(data);
-      }
+      const res = await fetch("/latest-detection");
+      const data = await res.json();
+      if (data._id) updateAlert(data);
     } catch (error) {
-      console.error("Error checking for detections:", error);
+      console.error("Fetch error:", error);
     }
   }
 
-  // Poll every 1 second
   setInterval(checkForDetections, 1000);
-  checkForDetections();
 </script>
-
 {% endblock %}
