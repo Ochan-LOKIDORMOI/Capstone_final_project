@@ -5,7 +5,7 @@ import io
 import csv
 import os
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageEnhance
 from dotenv import load_dotenv
 from pymongo import MongoClient
 from datetime import datetime, timedelta
@@ -37,8 +37,17 @@ users_col = db.users
 
 def preprocess_image(image_bytes):
     image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
-    image = image.resize((150, 150))
-    return np.expand_dims(np.array(image) / 255.0, axis=0)
+
+    # 🛠️ Enhance quality for webcam inputs
+    image = ImageEnhance.Contrast(image).enhance(1.2)
+    image = ImageEnhance.Sharpness(image).enhance(1.5)
+
+    # ✅ Match your model's input shape — adjust if needed
+    image = image.resize((150, 150))  # or (224, 224) depending on your model
+
+    image_array = np.array(image) / 255.0
+    return np.expand_dims(image_array, axis=0)
+
 
 # === SMS ===
 
@@ -354,28 +363,35 @@ def feedback():
 @app.route('/predict', methods=["POST"])
 def predict():
     try:
+        # 🔄 1. Parse incoming base64 image
         data = request.get_json()
         image_data = data['image']
         img_bytes = base64.b64decode(
             re.sub('^data:image/.+;base64,', '', image_data))
+
+        # 🧼 2. Preprocess the image
         img_array = preprocess_image(img_bytes)
 
+        # 🤖 3. Run prediction
         preds = model.predict(img_array)[0]
         class_names = ['Elephant', 'Monkey', 'Buffalo']
         max_index = int(np.argmax(preds))
         confidence = float(np.max(preds)) * 100
 
-        # ✅ Skip low-confidence predictions
+        # 🛑 4. Skip low-confidence predictions
         if confidence < 75:
-            return jsonify({})  # Empty response, nothing logged
+            return jsonify({})
 
         label = class_names[max_index]
 
+        # 📍 5. Fetch latest farmer info
         latest_farmer = farmers_col.find_one(sort=[("registered_on", -1)])
         phone = latest_farmer.get("phone") if latest_farmer else None
         location = latest_farmer.get(
             "location") if latest_farmer else "Unknown"
+        name = latest_farmer.get("name") if latest_farmer else "Farmer"
 
+        # 🧾 6. Prepare result
         result = {
             "label": label,
             "confidence": round(confidence, 2),
@@ -385,11 +401,11 @@ def predict():
             "farmer_phone": phone
         }
 
-        # Insert into MongoDB
+        # 🗃️ 7. Insert into MongoDB
         insert_result = detections_col.insert_one(result)
         result["_id"] = str(insert_result.inserted_id)
 
-        # Send SMS if phone is valid
+        # 📲 8. Send SMS
         if phone:
             formatted_phone = phone.strip()
             if formatted_phone.startswith("0"):
@@ -400,18 +416,15 @@ def predict():
             try:
                 send_sms_real(
                     formatted_phone,
-                    f"KULINDA SHAMBA ALERT 🚨\n"
-                    f"{label} detected at {location}\n"
-                    f"Confidence: {result['confidence']}%"
+                    f"LINDA ALERT 🚨\n"
+                    f"Hi {latest_farmer.get('name', 'Farmer')},\n"
+                    f"{label} has been detected on your farm in {location}.\n"
+                    f"The deterrent has been activated."
                 )
             except Exception as sms_err:
                 print("❌ SMS Error:", sms_err)
 
-        return jsonify(result)
-
-    except Exception as e:
-        return jsonify({"error": str(e)})
-
+        # ✅ 9. Return prediction result
         return jsonify(result)
 
     except Exception as e:
