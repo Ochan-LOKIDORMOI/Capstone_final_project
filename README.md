@@ -75,9 +75,17 @@ Visit http://localhost:5000
 
 ### - SMS confirmation log
   ![Image](https://github.com/user-attachments/assets/5b082bb7-eacc-4d70-99be-bbc0f7e29a9c)
-- Dashboard updating stats after each detection
-- Profile registration, photo upload, feedback submission
+  
+### - Dashboard updating stats after each detection
+  <img width="1345" height="629" alt="Image" src="https://github.com/user-attachments/assets/084c12ce-b220-424e-b35c-71da43e2a80c" />
+### - Profile registration, photo upload, feedback submission
+  <img width="1349" height="631" alt="Image" src="https://github.com/user-attachments/assets/361369ec-0f2b-4e63-a4be-fa7254d9c349" />
 - Mobile view with sidebar nav
+  <img width="1327" height="552" alt="Image" src="https://github.com/user-attachments/assets/fad07cea-f30e-4ec2-909d-57a78bbc0a9f" />
+
+  <img width="1353" height="560" alt="Image" src="https://github.com/user-attachments/assets/8dcf04a9-feec-44c9-9cda-bac49eabe041" />
+<img width="1342" height="560" alt="Image" src="https://github.com/user-attachments/assets/712af357-a9f4-466c-b57e-8a347dcc119f" />
+<img width="1349" height="555" alt="Image" src="https://github.com/user-attachments/assets/a295be83-d6e7-4f6b-af80-bf8d6870017c" />
   
 ## 🔍 Analysis of Results
 
