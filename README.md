@@ -1,7 +1,7 @@
 # Capstone Final Project
 
 
-## 🌾 Kulinda Shamba: AI Wildlife Detection System
+## 🌾 Linda Shamba: AI Wildlife Detection System
 
 - Linda Shamba which means "Protect the farm" is a real-time system that detects wildlife encroaching on farms.
 - When an animal is detected via camera or image upload, the system sends an SMS alert to the registered farmer to take immediate action.
