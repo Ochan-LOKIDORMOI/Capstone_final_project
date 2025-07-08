@@ -60,6 +60,11 @@ def welcome():
     return render_template('welcome.html')
 
 
+@app.route('/health')
+def health():
+    return "OK", 200
+
+
 @app.route('/signup', methods=['GET', 'POST'])
 def signup():
     if request.method == 'POST':
