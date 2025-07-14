@@ -14,18 +14,12 @@ import tensorflow as tf
 from twilio.rest import Client
 from flask_bcrypt import Bcrypt
 
-# === App Setup ===
 app = Flask(__name__)
 load_dotenv()
 app.secret_key = os.getenv("SECRET_KEY")
 
-# === Load TensorFlow Model ===
-try:
-    model = tf.keras.models.load_model('model/model2.h5')
-    print("✅ Model loaded successfully.")
-except Exception as e:
-    print("❌ Error loading model:", e)
-    raise e
+# === Load Model ===
+model = tf.keras.models.load_model('model/model2.h5')
 
 # === MongoDB Setup ===
 client = MongoClient(os.getenv("MONGO_URI"))
@@ -34,10 +28,9 @@ detections_col = db.detections
 farmers_col = db.farmers
 feedback_col = db.feedback
 users_col = db.users
-
 bcrypt = Bcrypt(app)
 
-# === Image Preprocessing ===
+# === Preprocess Image ===
 
 
 def preprocess_image(image_bytes):
@@ -45,7 +38,7 @@ def preprocess_image(image_bytes):
     image = image.resize((150, 150))
     return np.expand_dims(np.array(image) / 255.0, axis=0)
 
-# === SMS Sending ===
+# === Send SMS ===
 
 
 def send_sms_real(phone, message):
@@ -56,13 +49,7 @@ def send_sms_real(phone, message):
 
 
 @app.route('/')
-def welcome():
-    return render_template('welcome.html')
-
-
-@app.route('/health')
-def health():
-    return "OK", 200
+def welcome(): return render_template('welcome.html')
 
 
 @app.route('/signup', methods=['GET', 'POST'])
@@ -73,12 +60,10 @@ def signup():
         phone = request.form['phone'].strip()
         password = request.form['password']
         confirm_password = request.form['confirm_password']
-
         if users_col.find_one({"email": email}):
             return "Email already registered", 400
         if password != confirm_password:
             return "Passwords do not match", 400
-
         hashed_password = bcrypt.generate_password_hash(
             password).decode('utf-8')
         users_col.insert_one({
@@ -134,13 +119,11 @@ def dashboard():
 
 
 @app.route('/detect')
-def detect():
-    return render_template('detect.html')
+def detect(): return render_template('detect.html')
 
 
 @app.route('/upload')
-def upload():
-    return render_template("upload.html")
+def upload(): return render_template("upload.html")
 
 
 @app.route('/register-farmer', methods=['GET', 'POST'])
@@ -203,8 +186,7 @@ def update_profile():
 
 
 @app.route('/sms')
-def sms():
-    return render_template('sms.html')
+def sms(): return render_template('sms.html')
 
 
 @app.route('/test-sms', methods=['POST'])
@@ -341,3 +323,7 @@ def predict():
         return jsonify(result)
     except Exception as e:
         return jsonify({"error": str(e)})
+
+
+if __name__ == '__main__':
+    app.run(debug=True)
