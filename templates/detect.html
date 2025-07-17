@@ -1,74 +1,22 @@
 {% extends "base.html" %} {% block title %}Real-Time Detection{% endblock %} {%
-block content %}
-
-{% block styles %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/detect.css') }}">
-{% endblock %}
-
+block styles %}
+<link
+  rel="stylesheet"
+  href="{{ url_for('static', filename='css/detect.css') }}"
+/>
+{% endblock %} {% block content %}
 <h2 class="page-title">🔴 Real Time Detection</h2>
 
 <div class="webcam-container">
-  <video id="video" autoplay playsinline></video>
-  <canvas id="canvas" style="display: none"></canvas>
+  <img
+    src="{{ url_for('video_feed') }}"
+    alt="Live Detection Feed"
+    width="720"
+  />
 </div>
 
-<div id="result-box" class="alert-box" style="display: none">
-  <h4>🚨 Wildlife Alert</h4>
-  <p id="prediction-result">Detecting...</p>
+<div class="alert-box" id="result-box">
+  <h4>🟢 Detection Status</h4>
+  <p>This video is being scanned every 8 seconds using YOLOv8</p>
 </div>
-
-<script>
-  const video = document.getElementById("video");
-  const canvas = document.getElementById("canvas");
-  const resultBox = document.getElementById("result-box");
-  const resultText = document.getElementById("prediction-result");
-
-  // Access the webcam
-  navigator.mediaDevices
-    .getUserMedia({ video: true })
-    .then((stream) => {
-      video.srcObject = stream;
-    })
-    .catch((err) => {
-      console.error("Webcam error:", err);
-      alert("Failed to access webcam.");
-    });
-
-  function captureAndPredict() {
-    if (!video.videoWidth || !video.videoHeight) return;
-
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    const ctx = canvas.getContext("2d");
-    ctx.drawImage(video, 0, 0);
-    const dataURL = canvas.toDataURL("image/jpeg");
-
-    fetch("/predict", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ image: dataURL }),
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        resultBox.style.display = "block";
-
-        if (data.error) {
-          resultText.innerText = "Prediction failed. Try again.";
-          console.error("Prediction error:", data.error);
-        } else {
-          const label = data.label || "Unknown";
-          const confidence = data.confidence ?? "N/A";
-          resultText.innerText = `${label} Detected\nConfidence: ${confidence}%`;
-        }
-      })
-      .catch((error) => {
-        console.error("Fetch error:", error);
-        resultText.innerText = "Failed to fetch prediction.";
-      });
-  }
-
-  // Run detection every 8 seconds
-  setInterval(captureAndPredict, 8000);
-</script>
-
 {% endblock %}

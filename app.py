@@ -13,6 +13,10 @@ from datetime import datetime, timedelta
 import tensorflow as tf
 from twilio.rest import Client
 from flask_bcrypt import Bcrypt
+from ultralytics import YOLO
+import cv2
+import time
+
 
 app = Flask(__name__)
 load_dotenv()
@@ -44,6 +48,66 @@ def preprocess_image(image_bytes):
 def send_sms_real(phone, message):
     client = Client(os.getenv("TWILIO_SID"), os.getenv("TWILIO_AUTH_TOKEN"))
     return client.messages.create(body=message, from_=os.getenv("TWILIO_PHONE"), to=phone).sid
+
+
+
+# Load YOLO model (used only for /detect)
+yolo_model = YOLO("model/best_1.pt")
+video_path = "static/videos/wildlife_sample.mp4"
+yolo_cap = cv2.VideoCapture(video_path)
+
+def generate_yolo_frames():
+    last_detection_time = 0
+    detection_interval = 8  # seconds
+
+    while True:
+        success, frame = yolo_cap.read()
+        if not success:
+            yolo_cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+            continue
+
+        current_time = time.time()
+        if current_time - last_detection_time >= detection_interval:
+            results = yolo_model(frame)[0]
+            for box in results.boxes:
+                x1, y1, x2, y2 = map(int, box.xyxy[0])
+                label = yolo_model.names[int(box.cls)]
+                conf = float(box.conf)
+                cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
+                cv2.putText(frame, f"{label} {conf:.2f}", (x1, y1 - 10),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
+
+                # Save detection to MongoDB and send SMS
+                timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                farmer = farmers_col.find_one(sort=[("registered_on", -1)])
+                detection_doc = {
+                    "label": label,
+                    "confidence": round(conf * 100, 2),
+                    "timestamp": timestamp,
+                    "location": farmer.get("location", "Unknown") if farmer else "Unknown",
+                    "image": "",  # Not saving image from YOLO simulation
+                    "farmer_phone": farmer.get("phone") if farmer else None
+                }
+                detections_col.insert_one(detection_doc)
+
+                if farmer:
+                    phone = farmer.get("phone")
+                    if phone.startswith("0"):
+                        phone = "+250" + phone[1:]
+                    elif not phone.startswith("+"):
+                        phone = "+250" + phone
+                    try:
+                        send_sms_real(phone,
+                                      f"LINDA ALERT 🚨\nHi {farmer.get('name', 'Farmer')},\n"
+                                      f"{label} detected at {detection_doc['location']} (YOLOv8).")
+                    except Exception as e:
+                        print("❌ YOLO SMS Error:", e)
+            last_detection_time = current_time
+
+        ret, buffer = cv2.imencode('.jpg', frame)
+        frame = buffer.tobytes()
+        yield (b"--frame\r\n"
+               b"Content-Type: image/jpeg\r\n\r\n" + frame + b"\r\n")
 
 # === Routes ===
 
@@ -120,6 +184,10 @@ def dashboard():
 
 @app.route('/detect')
 def detect(): return render_template('detect.html')
+
+@app.route("/video_feed")
+def video_feed():
+    return Response(generate_yolo_frames(), mimetype="multipart/x-mixed-replace; boundary=frame")
 
 
 @app.route('/upload')
