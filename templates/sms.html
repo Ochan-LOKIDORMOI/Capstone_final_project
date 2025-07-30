@@ -1,9 +1,8 @@
-{% extends "base.html" %} {% block title %}Wildlife Alerts{% endblock %} {%
-block content %} {% block styles %}
-<link
-  rel="stylesheet"
-  href="{{ url_for('static', filename='css/alerts.css') }}"
-/>
+{% extends "base.html" %}
+{% block title %}Wildlife Alerts{% endblock %}
+{% block content %}
+{% block styles %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/alerts.css') }}" />
 {% endblock %}
 
 <h2 class="page-title">🚨 Wildlife Alert System</h2>
@@ -19,26 +18,18 @@ block content %} {% block styles %}
     </div>
   </div>
 
+  <!-- ✅ Cleaned Deterrent Section -->
   <div class="deterrent-box">
-    <h4>🦟 Deterrent System</h4>
-    <p>
-      System will auto-activate deterrent in
-      <span id="countdown">5</span> seconds or trigger manually below.
-    </p>
-    <button id="trigger-btn" class="btn-submit">Trigger Deterrent Now</button>
-    <p id="status-text"></p>
+    <h4> Deterrent System</h4>
+    <p id="status-text">Waiting for detection to activate deterrent...</p>
   </div>
 </div>
 
 <script>
   let lastDetectionId = null;
-  let countdownInterval = null;
-
-  const triggerBtn = document.getElementById("trigger-btn");
-  const statusText = document.getElementById("status-text");
   const alertText = document.getElementById("live-alert");
   const imagePreview = document.getElementById("alert-image-preview");
-  const countdownElement = document.getElementById("countdown");
+  const statusText = document.getElementById("status-text");
 
   function updateAlert(data) {
     if (data._id && data._id !== lastDetectionId) {
@@ -54,39 +45,14 @@ block content %} {% block styles %}
         ? `<img src="${data.image}" alt="Detected ${data.label} at ${data.location}">`
         : `<p>Image not available</p>`;
 
-      resetCountdown();
-      startCountdown();
+      activateDeterrent(data.label);
     }
   }
 
-  function resetCountdown() {
-    if (countdownInterval) clearInterval(countdownInterval);
-    countdownElement.textContent = "5";
-  }
-
-  function startCountdown() {
-    let seconds = 5;
-    countdownInterval = setInterval(() => {
-      seconds--;
-      countdownElement.textContent = seconds;
-
-      if (seconds <= 0) {
-        clearInterval(countdownInterval);
-        activateDeterrent();
-      }
-    }, 1000);
-  }
-
-  function activateDeterrent() {
+  function activateDeterrent(label) {
     const time = new Date().toLocaleTimeString();
-    const label = alertText.textContent.split("Detected")[0] || "Animal";
-    statusText.textContent = `Deterrent activated at ${time} for ${label}`;
+    statusText.textContent = `The system has automatically activated the deterrent at ${time} for 🎉 ${label}`;
   }
-
-  triggerBtn.addEventListener("click", () => {
-    resetCountdown();
-    activateDeterrent();
-  });
 
   async function checkForDetections() {
     try {

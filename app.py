@@ -50,15 +50,17 @@ def send_sms_real(phone, message):
     return client.messages.create(body=message, from_=os.getenv("TWILIO_PHONE"), to=phone).sid
 
 
-
 # Load YOLO model (used only for /detect)
-yolo_model = YOLO("model/best_1.pt")
+yolo_model = YOLO("model/best.pt")
 video_path = "static/videos/wildlife_sample.mp4"
 yolo_cap = cv2.VideoCapture(video_path)
 
+
 def generate_yolo_frames():
     last_detection_time = 0
-    detection_interval = 8  # seconds
+    detection_interval = 2  # seconds
+
+    os.makedirs("static/detections", exist_ok=True)  # Ensure image folder exists
 
     while True:
         success, frame = yolo_cap.read()
@@ -73,23 +75,35 @@ def generate_yolo_frames():
                 x1, y1, x2, y2 = map(int, box.xyxy[0])
                 label = yolo_model.names[int(box.cls)]
                 conf = float(box.conf)
+
+                if conf < 0.80:
+                    continue  # Skip detections below 80% confidence
+
+                # Draw box and label
                 cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
                 cv2.putText(frame, f"{label} {conf:.2f}", (x1, y1 - 10),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
 
-                # Save detection to MongoDB and send SMS
-                timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                # Save image to disk
+                timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+                img_filename = f"static/detections/yolo_{timestamp}.jpg"
+                cv2.imwrite(img_filename, frame)
+
+                # Fetch latest farmer
                 farmer = farmers_col.find_one(sort=[("registered_on", -1)])
+
+                # Save detection to MongoDB
                 detection_doc = {
                     "label": label,
                     "confidence": round(conf * 100, 2),
-                    "timestamp": timestamp,
+                    "timestamp": datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
                     "location": farmer.get("location", "Unknown") if farmer else "Unknown",
-                    "image": "",  # Not saving image from YOLO simulation
+                    "image": img_filename,
                     "farmer_phone": farmer.get("phone") if farmer else None
                 }
                 detections_col.insert_one(detection_doc)
 
+                # Send SMS
                 if farmer:
                     phone = farmer.get("phone")
                     if phone.startswith("0"):
@@ -102,12 +116,15 @@ def generate_yolo_frames():
                                       f"{label} detected at {detection_doc['location']} (YOLOv8).")
                     except Exception as e:
                         print("❌ YOLO SMS Error:", e)
+
             last_detection_time = current_time
 
+        # Stream video frame to browser
         ret, buffer = cv2.imencode('.jpg', frame)
         frame = buffer.tobytes()
         yield (b"--frame\r\n"
                b"Content-Type: image/jpeg\r\n\r\n" + frame + b"\r\n")
+
 
 # === Routes ===
 
@@ -160,7 +177,7 @@ def login():
 @app.route('/logout')
 def logout():
     session.clear()
-    flash("👋 Logged out successfully.", "success")
+    flash("Logged out successfully.", "success")
     return redirect("/login")
 
 
@@ -182,8 +199,11 @@ def dashboard():
     }, farmer_registered=farmer_registered)
 
 
-@app.route('/detect')
-def detect(): return render_template('detect.html')
+@app.route("/detect")
+def detect():
+    latest_detection = detections_col.find_one(sort=[("timestamp", -1)])
+    return render_template("detect.html", detection=latest_detection)
+
 
 @app.route("/video_feed")
 def video_feed():

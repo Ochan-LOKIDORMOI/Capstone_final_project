@@ -47,9 +47,9 @@ content %} {% block styles %}
           }}
         </td>
         <td>
-          {% if log.label == 'Elephant' %} 🐘 {{ log.label }} {% elif log.label
-          == 'Monkey' %} 🐒 {{ log.label }} {% elif log.label == 'Buffalo' %} 🐃
-          {{ log.label }} {% else %} ❓ {{ log.label }} {% endif %}
+          {% if log.label == 'Elephant' %} {{ log.label }} {% elif log.label ==
+          'Monkey' %} {{ log.label }} {% elif log.label == 'Buffalo' %} {{
+          log.label }} {% else %} {{ log.label }} {% endif %}
         </td>
         <td><span class="tag">{{ log.confidence }}%</span></td>
         <td>{{ log.location or 'Unknown' }}</td>

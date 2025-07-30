@@ -1,10 +1,12 @@
-{% extends "base.html" %} {% block title %}Real-Time Detection{% endblock %} {%
-block styles %}
+{% extends "base.html" %}
+{% block title %}Real-Time Detection{% endblock %}
+{% block styles %}
 <link
   rel="stylesheet"
   href="{{ url_for('static', filename='css/detect.css') }}"
 />
-{% endblock %} {% block content %}
+{% endblock %}
+{% block content %}
 <h2 class="page-title">🔴 Real Time Detection</h2>
 
 <div class="webcam-container">
@@ -15,8 +17,42 @@ block styles %}
   />
 </div>
 
-<div class="alert-box" id="result-box">
-  <h4>🟢 Detection Status</h4>
-  <p>This video is being scanned every 8 seconds using YOLOv8</p>
+{% if detection %}
+<div class="alert-box latest-detection" id="detection-box"
+     data-timestamp="{{ detection.timestamp }}">
+  <h4>📢 Latest Detection Alert</h4>
+  <div style="background-color: #fbeaea; padding: 10px; border-radius: 5px">
+    <strong>🎉 {{ detection.label }} Detected at {{ detection.location }}!</strong><br />
+    Confidence: {{ detection.confidence }}%<br />
+    Time: <span id="detection-time">{{ detection.timestamp }}</span>
+  </div>
 </div>
+{% endif %}
+
+<!-- 🔊 Hidden Audio Player -->
+<audio id="alertSound">
+  <source src="{{ url_for('static', filename='sounds/alert.mp3') }}" type="audio/mpeg">
+  Your browser does not support the audio element.
+</audio>
+
+<script>
+  // Store the last played timestamp in local storage
+  const detectionBox = document.getElementById("detection-box");
+  const alertSound = document.getElementById("alertSound");
+
+  if (detectionBox && alertSound) {
+    const newTimestamp = detectionBox.dataset.timestamp;
+    const lastPlayed = localStorage.getItem("lastDetectionTimestamp");
+
+    if (newTimestamp !== lastPlayed) {
+      // New detection, play the alert
+      alertSound.play().catch(err => {
+        console.log("Audio play blocked:", err);
+      });
+
+      // Update last played
+      localStorage.setItem("lastDetectionTimestamp", newTimestamp);
+    }
+  }
+</script>
 {% endblock %}
