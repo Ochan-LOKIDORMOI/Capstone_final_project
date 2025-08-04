@@ -67,9 +67,7 @@ Visit http://localhost:5000
 
 ## 🎥 Demo Video (5 Minutes)
 ### [Video](https://www.youtube.com/watch?v=zgM-RigtkHg)
-## 🌍 Live Deployment
 
-### *Coming soon..............*
 
 ## 📊 Screenshot Highlights
 
