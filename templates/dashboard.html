@@ -26,7 +26,7 @@ content %}
     <div class="log-entry">
       <strong>
         {% if log.label == 'Elephant' %} 🐘 {% elif log.label == 'Monkey' %} 🐒
-        {% elif log.label == 'Buffalo' %} 🐃 {% else %} 🐾 {% endif %} {{
+        {% elif log.label == 'Buffalo' %} 🐃 {% else %}  {% endif %} {{
         log.label }} detected </strong
       ><br />
       {{ log.timestamp }} • {{ log.confidence }}% confidence • {{ log.location
