@@ -107,6 +107,7 @@ Visit http://localhost:5000
 - **Twilio API** – SMS delivery
 - **HTML/CSS/JS** – Frontend
 
+
 ## 📌 Future Work
 
 - 🎯 Add support for more animals
@@ -114,3 +115,7 @@ Visit http://localhost:5000
 - 📡 Add voice alert support
 - 🧠 Improve model with more diverse dataset
 
+
+## Owner
+### Name: Ochan LOKIDORMOI
+### Email: o.lokidormo@alustudent.com
